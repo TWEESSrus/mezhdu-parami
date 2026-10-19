@@ -1,0 +1,43 @@
+# Unity generated data, at the root or inside a future Unity project folder
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Mm]emoryCaptures/
+**/[Rr]ecordings/
+
+# Editor and IDE generated files
+.vs/
+.idea/
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.opendb
+*.VC.db
+*.csproj.meta
+*.sln.meta
+
+# Local credentials and environment overrides
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Operating system and Word temporary files
+.DS_Store
+Thumbs.db
+Desktop.ini
+~$*.docx
+
+# Python helper output
+__pycache__/
+*.pyc
