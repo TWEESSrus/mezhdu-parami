@@ -11,6 +11,7 @@ namespace MezhduParami
         public int EnergyDelta;
         public int MoneyDelta;
         public int IntelligenceExperience;
+        public int ReadinessDelta;
         public bool IsWork;
     }
 }

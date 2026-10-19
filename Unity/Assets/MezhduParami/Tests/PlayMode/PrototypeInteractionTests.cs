@@ -121,8 +121,95 @@ namespace MezhduParami.Tests
             yield return null;
             yield return Press(Key.E);
             Assert.That(ui.DialogBody.text, Does.Contain("Привет"));
+            yield return Press();
+            yield return Press(Key.Escape);
+            Assert.That(ui.Day.Period, Is.EqualTo(1), "Reading and cancelling the offer must be free");
+            Assert.That(ui.Promise.State, Is.EqualTo(PromiseState.NotAccepted));
+        }
+
+        [UnityTest] public IEnumerator NightCannotBeDismissedAndDoubleClickChargesFoodOnce()
+        {
+            for (int i = 0; i < 3; i++) yield return Confirm("Bed");
+            Assert.That(ui.Day.IsComplete, Is.True);
+            Assert.That(ui.InputBlocked, Is.True);
+            ui.CloseDialog();
+            Assert.That(ui.DialogPanel.activeSelf, Is.True, "Night requires an explicit food choice");
+            yield return null;
             ui.PrimaryButton.onClick.Invoke();
-            Assert.That(ui.Day.Period, Is.EqualTo(1), "Conversation must be free");
+            ui.PrimaryButton.onClick.Invoke();
+            Assert.That(ui.Day.DayNumber, Is.EqualTo(2));
+            Assert.That(ui.Day.Period, Is.Zero);
+            Assert.That(ui.Day.Money, Is.EqualTo(112));
+            Assert.That(ui.Day.Energy, Is.EqualTo(100));
+            Assert.That(ui.InputBlocked, Is.False);
+        }
+
+        [UnityTest] public IEnumerator KeepingPromiseShowsTrustAndClosedEnding() => RunPromiseRoute(true);
+
+        [UnityTest] public IEnumerator TakingShiftShowsWarningAndBrokenPromiseEnding() => RunPromiseRoute(false);
+
+        [UnityTest] public IEnumerator SecondaryButtonDeclinesFreelyAndCanSkipFoodAtNight()
+        {
+            ui.OpenInteraction(GameObject.Find("Sasha").GetComponent<WorldInteraction>());
+            ui.CancelButton.onClick.Invoke();
+            Assert.That(ui.Promise.State, Is.EqualTo(PromiseState.Declined));
+            Assert.That(ui.Day.Period, Is.Zero);
+            Assert.That(ui.Day.Readiness, Is.Zero);
+            Assert.That(ui.Day.Energy, Is.EqualTo(80));
+            for (int i = 0; i < 3; i++) yield return Confirm("Bed");
+            ui.CancelButton.onClick.Invoke();
+            ui.CancelButton.onClick.Invoke();
+            Assert.That(ui.Day.DayNumber, Is.EqualTo(2));
+            Assert.That(ui.Day.Money, Is.EqualTo(120));
+            Assert.That(ui.Day.Health, Is.EqualTo(72));
+            Assert.That(ui.Promise.Trust, Is.Zero);
+        }
+
+        private IEnumerator RunPromiseRoute(bool help)
+        {
+            yield return Confirm("Sasha");
+            Assert.That(ui.Promise.State, Is.EqualTo(PromiseState.Promised));
+            Assert.That(ui.Day.Readiness, Is.EqualTo(2));
+            Assert.That(ui.QuestStatus.text, Does.Contain("день 3"));
+            yield return Confirm("Bed");
+            yield return Confirm("Bed");
+            yield return null;
+            ui.PrimaryButton.onClick.Invoke();
+            yield return null;
+            for (int i = 0; i < 3; i++) yield return Confirm("Bed");
+            yield return null;
+            ui.PrimaryButton.onClick.Invoke();
+            yield return null;
+            yield return Confirm("Bed");
+            yield return Confirm("Bed");
+            Assert.That(ui.Day.DayNumber, Is.EqualTo(3));
+            Assert.That(ui.Day.Period, Is.EqualTo(2));
+            ui.OpenJournal();
+            Assert.That(ui.DialogBody.text, Does.Contain("Выполнить оба дела нельзя"));
+            ui.CloseDialog();
+            ui.OpenInteraction(GameObject.Find(help ? "Sasha" : "Noticeboard").GetComponent<WorldInteraction>());
+            Assert.That(ui.DialogBody.text, Does.Contain(help ? "Доверие Саши +1" : "доверие -1"));
+            int before = ui.Day.Money;
+            yield return null;
+            ui.PrimaryButton.onClick.Invoke();
+            ui.PrimaryButton.onClick.Invoke();
+            Assert.That(ui.Day.IsFinished, Is.True);
+            Assert.That(ui.Promise.Trust, Is.EqualTo(help ? 1 : -1));
+            Assert.That(ui.Promise.State, Is.EqualTo(help ? PromiseState.Fulfilled : PromiseState.Broken));
+            Assert.That(ui.Day.Money, Is.EqualTo(before + (help ? 0 : 80)));
+            Assert.That(ui.DialogTitle.text, Is.EqualTo("Первые дни позади"));
+            Assert.That(ui.DialogBody.text, Does.Contain(help ? "Обещание выполнено" : "Обещание нарушено"));
+            Assert.That(ui.CancelButton.gameObject.activeSelf, Is.False);
+        }
+
+        private IEnumerator Confirm(string objectName)
+        {
+            yield return null;
+            ui.OpenInteraction(GameObject.Find(objectName).GetComponent<WorldInteraction>());
+            Assert.That(ui.DialogPanel.activeSelf, Is.True);
+            Assert.That(ui.PrimaryButton.interactable, Is.True, ui.DialogBody.text);
+            ui.PrimaryButton.onClick.Invoke();
+            yield return null;
         }
     }
 }

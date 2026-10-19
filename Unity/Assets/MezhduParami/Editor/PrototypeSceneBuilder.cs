@@ -121,7 +121,80 @@ namespace MezhduParami.Editor
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
+            UpgradeThreeDaySlice();
             Debug.Log("[MezhduParami] Prototype scene created: " + ScenePath);
+        }
+
+        [MenuItem("Между парами/Подключить трёхдневный сценарий")]
+        public static void UpgradeThreeDaySlice()
+        {
+            if (EditorApplication.isPlaying) throw new InvalidOperationException("Stop Play Mode before upgrading the scene.");
+            var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (scene.isDirty) throw new InvalidOperationException("Save the active scene before upgrading it.");
+            if (scene.path != ScenePath) scene = EditorSceneManager.OpenScene(ScenePath);
+            var ui = UnityEngine.Object.FindFirstObjectByType<PrototypeUI>();
+            if (ui == null) throw new InvalidOperationException("PrototypeUI is missing.");
+            font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(Root + "/Fonts/PrototypeCyrillic.asset");
+            var definition = AssetDatabase.LoadAssetAtPath<SashaQuestDefinition>(Root + "/Data/SashaPromise.asset");
+            if (definition == null)
+            {
+                definition = ScriptableObject.CreateInstance<SashaQuestDefinition>();
+                definition.Consultation = MakeActivity("sasha.consultation", "Консультация Саши", "Вместе разобрать трудную тему. Взамен — обещание помочь Саше позже.", -15, 0, 0);
+                definition.Consultation.ReadinessDelta = 2;
+                definition.Help = MakeActivity("sasha.help", "Помочь Саше с проектом", "Выделить обещанный вечер и вместе закончить проект.", -20, 0, 0);
+                definition.SpecialShift = MakeActivity("work.special", "Разовая вечерняя смена", "Помочь с разгрузкой перед мероприятием. Только вечером дня 3; одна оплачиваемая смена за день.", -20, 80, 0, true);
+                definition.OfferText = "Помогу разобраться с учёбой сейчас. Взамен помоги мне с проектом вечером дня 3. Согласишься? Отказ не мешает заниматься самостоятельно.";
+                definition.FulfilledText = "Спасибо за помощь! Проект готов. Теперь я знаю, что на тебя можно положиться.";
+                definition.BrokenText = "Я ждал тебя с проектом. Пришлось заканчивать одному. В следующий раз заранее скажи, если не успеваешь.";
+                definition.DeclinedText = "Хорошо, без обязательств. Если передумаешь насчёт учёбы, за столом можно подготовиться самостоятельно.";
+                AssetDatabase.CreateAsset(definition, Root + "/Data/SashaPromise.asset");
+                EditorUtility.SetDirty(definition.Consultation);
+            }
+            ui.QuestDefinition = definition;
+            var study = AssetDatabase.LoadAssetAtPath<ActivityDefinition>(Root + "/Data/study.asset");
+            study.ReadinessDelta = 1;
+            EditorUtility.SetDirty(study);
+            var sasha = GameObject.Find("Sasha").GetComponent<WorldInteraction>();
+            sasha.Id = "npc.sasha";
+            var board = GameObject.Find("Noticeboard").GetComponent<WorldInteraction>();
+            board.Id = "work.board";
+
+            var header = (RectTransform)ui.Header.transform.parent;
+            header.sizeDelta = new Vector2(0, 122);
+            var questStatus = header.Find("QuestStatus");
+            ui.QuestStatus = questStatus != null ? questStatus.GetComponent<TMP_Text>()
+                : Text(header, "QuestStatus", "", 17, ColorOf("F4D987"), new Vector2(24, -86), new Vector2(1232, 27));
+            ui.Status.rectTransform.anchoredPosition = new Vector2(24, -52);
+            ui.Status.rectTransform.sizeDelta = new Vector2(1232, 29);
+            var controls = ui.Feedback.transform.parent.Find("Controls").GetComponent<TMP_Text>();
+            controls.text = "WASD / стрелки — движение    E — взаимодействие    J — журнал    Esc — отмена / пауза";
+            var selectionDescription = ui.SelectionPanel.transform.Find("Description").GetComponent<TMP_Text>();
+            selectionDescription.text = "Первые три дня в общаге: учёба, работа и обещание.\nВыбери героя. Возможности одинаковые.";
+            var dialog = (RectTransform)ui.DialogPanel.transform;
+            dialog.sizeDelta = new Vector2(800, 462);
+            ui.DialogTitle.rectTransform.sizeDelta = new Vector2(740, 42);
+            ui.DialogBody.fontSize = 20;
+            ui.DialogBody.rectTransform.anchoredPosition = new Vector2(30, -78);
+            ui.DialogBody.rectTransform.sizeDelta = new Vector2(740, 296);
+            ResizeButton(ui.PrimaryButton, new Vector2(30, -390), new Vector2(354, 50));
+            ResizeButton(ui.CancelButton, new Vector2(414, -390), new Vector2(356, 50));
+            for (int i = ui.CancelButton.onClick.GetPersistentEventCount() - 1; i >= 0; i--)
+                UnityEditor.Events.UnityEventTools.RemovePersistentListener(ui.CancelButton.onClick, i);
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(ui.CancelButton.onClick, ui.OnSecondary);
+            EditorUtility.SetDirty(ui);
+            EditorUtility.SetDirty(sasha);
+            EditorUtility.SetDirty(board);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            AssetDatabase.SaveAssets();
+        }
+
+        private static void ResizeButton(UnityEngine.UI.Button button, Vector2 position, Vector2 size)
+        {
+            var rect = button.GetComponent<RectTransform>();
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+            button.GetComponentInChildren<TMP_Text>().rectTransform.sizeDelta = size;
         }
 
         public static string DetectPipeline()

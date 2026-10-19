@@ -20,4 +20,5 @@ MonoBehaviour:
   EnergyDelta: -20
   MoneyDelta: 0
   IntelligenceExperience: 1
+  ReadinessDelta: 1
   IsWork: 0
