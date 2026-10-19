@@ -1,0 +1,6 @@
+{
+  "name": "MezhduParami.Tests",
+  "references": ["MezhduParami.Runtime"],
+  "includePlatforms": ["Editor"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "MezhduParami.Runtime",
+  "rootNamespace": "MezhduParami",
+  "references": ["Unity.InputSystem", "Unity.TextMeshPro", "Unity.ugui"],
+  "autoReferenced": true
+}
