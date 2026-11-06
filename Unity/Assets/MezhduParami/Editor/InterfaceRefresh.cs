@@ -15,7 +15,7 @@ namespace MezhduParami.Editor
         private const string Fonts = "Assets/MezhduParami/Fonts/Interface/";
         private static TMP_FontAsset body, heading;
         private static Sprite rounded;
-        private const string Paper = "F5EFDF", Ink = "2D3D38", Muted = "586B60", Mint = "42654C";
+        private const string Paper = "30241D", Ink = "F4E7C9", Muted = "D3C2A3", Mint = "A9C48B";
 
         [MenuItem("Между парами/Обновить интерфейс и мини-карту")]
         public static void Apply()
@@ -33,8 +33,8 @@ namespace MezhduParami.Editor
                 || ui.PrimaryButton.onClick.GetPersistentEventCount() == 0 || ui.CancelButton.onClick.GetPersistentEventCount() == 0)
                 throw new InvalidOperationException("Existing UI input wiring is incomplete.");
             Debug.Log("Interface migration: verified existing UI, " + ui.GetComponentsInChildren<RectTransform>(true).Length + " rects and persistent dialog handlers.");
-            body = Font("GolosText-Regular", "GolosTextSDF", true);
-            heading = Font("GolosText-SemiBold", "GolosTextSemiBoldSDF", true);
+            body = Font("MellowPixel-Regular", "MellowPixelRegularSDF", true);
+            heading = Font("MellowPixel-Light", "MellowPixelLightSDF", true);
             rounded = RoundedSprite();
             var root = (RectTransform)ui.transform;
             ui.GetComponent<UnityEngine.UI.CanvasScaler>().matchWidthOrHeight = 0;
@@ -56,7 +56,7 @@ namespace MezhduParami.Editor
             ui.HealthValue = Resource(resources, "Health", "ЗДОРОВЬЕ", "80 / 100", 2, Ink);
             ui.StudyValue = Resource(resources, "Study", "ГОТОВНОСТЬ", "0 / 6", 3, Ink);
             ui.EnergyFill = Meter(resources, "EnergyBar", 140, Mint);
-            ui.HealthFill = Meter(resources, "HealthBar", 268, "B57964");
+            ui.HealthFill = Meter(resources, "HealthBar", 268, "D49B80");
             Hide(resources, "MoneyHint"); Hide(resources, "StudyHint");
 
             var quest = Rect(hud, "PromiseCard"); Place(quest, 16, 88, 428, 36); Card(quest, Paper);
@@ -100,7 +100,7 @@ namespace MezhduParami.Editor
 
             var backdrop = Rect(root, "ModalBackdrop"); Stretch(backdrop);
             var shade = Component<UnityEngine.UI.Image>(backdrop);
-            shade.sprite = null; shade.color = new Color(0.07f, 0.16f, 0.19f, 0.45f); shade.raycastTarget = true;
+            shade.sprite = null; shade.color = new Color(.09f, .06f, .04f, .25f); shade.raycastTarget = true;
             ui.ModalBackdrop = backdrop.gameObject;
             backdrop.SetAsLastSibling();
             ConfigureDialog(ui);
@@ -125,7 +125,7 @@ namespace MezhduParami.Editor
         }
         private static UnityEngine.UI.Image Meter(RectTransform parent, string name, float x, string color)
         {
-            var track = Rect(parent, name); Place(track, x, 55, 106, 3); Card(track, "D4DBCF");
+            var track = Rect(parent, name); Place(track, x, 55, 106, 3); Card(track, "665644");
             var fill = Rect(track, "Fill"); Stretch(fill); var image = Component<UnityEngine.UI.Image>(fill);
             image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/MezhduParami/Art/PrototypeSquare.png");
             image.type = UnityEngine.UI.Image.Type.Filled; image.fillMethod = UnityEngine.UI.Image.FillMethod.Horizontal;
@@ -150,7 +150,7 @@ namespace MezhduParami.Editor
             // Landmark positions come from the playable scene, never a second set of world coordinates.
             string[] names = { "Sasha", "Bed", "Noticeboard", "StudyDesk" };
             string[] captions = { "Саша", "Общага", "Работа", "Учёба" };
-            string[] colors = { "9B5B99", Mint, "A66A18", "4F71AB" };
+            string[] colors = { "D8ACCF", Mint, "E5BD7C", "A8C3DF" };
             for (int i = 0; i < names.Length; i++)
             {
                 var landmark = GameObject.Find(names[i]);
@@ -160,7 +160,7 @@ namespace MezhduParami.Editor
                 mark.sizeDelta = new Vector2(14, 14);
                 mark.anchoredPosition = CampusMinimap.WorldToMapPosition(landmark.transform.position, minimap.WorldBounds, new Rect(0, -160, 160, 160));
                 Card(mark, colors[i]);
-                var number = Label(mark, "Number", (i + 1).ToString(), 10, "FFFFFF", 0, 0, 14, 14);
+                var number = Label(mark, "Number", (i + 1).ToString(), 10, Paper, 0, 0, 14, 14);
                 number.alignment = TextAlignmentOptions.Center;
                 Label(panel, "Legend" + i, (i + 1) + "  " + captions[i], 11, colors[i], 12 + i % 2 * 85, 200 + i / 2 * 18, 82, 17);
             }
@@ -175,10 +175,10 @@ namespace MezhduParami.Editor
         private static void ConfigureDialog(PrototypeUI ui)
         {
             var panel = (RectTransform)ui.DialogPanel.transform; Center(panel, 780, 496); Card(panel, Paper);
-            panel.GetComponent<UnityEngine.UI.Image>().color = ColorOf(Paper);
+            panel.GetComponent<UnityEngine.UI.Image>().color = new Color32(48, 36, 29, 235);
             Label(panel, "Caption", "МЕЖДУ ПАРАМИ", 11, Muted, 24, 16, 732, 18);
             Style(ui.DialogTitle, heading, 26, Ink); Place(ui.DialogTitle.rectTransform, 24, 39, 732, 36);
-            var line = Rect(panel, "Divider"); Place(line, 24, 85, 732, 1); Card(line, "D4DBCF");
+            var line = Rect(panel, "Divider"); Place(line, 24, 85, 732, 1); Card(line, "665644");
             Style(ui.DialogBody, body, 19, Ink); Place(ui.DialogBody.rectTransform, 24, 102, 732, 304);
             ui.DialogBody.lineSpacing = 3;
             Place((RectTransform)ui.PrimaryButton.transform, 24, 426, 354, 46); ButtonStyle(ui.PrimaryButton, null, true);
@@ -188,7 +188,7 @@ namespace MezhduParami.Editor
         private static void ConfigureSelection(PrototypeUI ui)
         {
             var panel = (RectTransform)ui.SelectionPanel.transform; Center(panel, 620, 296); Card(panel, Paper);
-            panel.GetComponent<UnityEngine.UI.Image>().color = ColorOf(Paper);
+            panel.GetComponent<UnityEngine.UI.Image>().color = new Color32(48, 36, 29, 235);
             Label(panel, "Caption", "ПЕРВЫЙ КУРС. ТВОЯ ИСТОРИЯ.", 12, Muted, 28, 20, 564, 20);
             var title = panel.Find("Title").GetComponent<TMP_Text>(); Style(title, heading, 42, Ink);
             Place(title.rectTransform, 26, 49, 568, 58);
@@ -204,12 +204,12 @@ namespace MezhduParami.Editor
 
         private static void ButtonStyle(UnityEngine.UI.Button button, string caption, bool primary)
         {
-            var rect = (RectTransform)button.transform; Card(rect, primary ? Mint : "DDE2D3");
+            var rect = (RectTransform)button.transform; Card(rect, primary ? "63513B" : "44372E");
             var image = rect.GetComponent<UnityEngine.UI.Image>(); image.raycastTarget = true;
             button.targetGraphic = image;
             var colors = button.colors;
-            colors.normalColor = Color.white; colors.highlightedColor = ColorOf("D5EADD");
-            colors.pressedColor = ColorOf("B8CEBD"); colors.selectedColor = colors.highlightedColor;
+            colors.normalColor = Color.white; colors.highlightedColor = ColorOf("FFE1AE");
+            colors.pressedColor = ColorOf("C1AC89"); colors.selectedColor = colors.highlightedColor;
             colors.disabledColor = new Color(.65f, .65f, .65f, .6f); colors.fadeDuration = .1f; button.colors = colors;
             var label = button.GetComponentInChildren<TMP_Text>() ?? Label(rect, "Label", "", 20, Ink, 0, 0, rect.sizeDelta.x, rect.sizeDelta.y);
             Style(label, body, 18, primary ? "FFFFFF" : Ink); Stretch(label.rectTransform);
@@ -225,12 +225,21 @@ namespace MezhduParami.Editor
             if (existing != null) AssetDatabase.DeleteAsset(path);
             var source = AssetDatabase.LoadAssetAtPath<UnityEngine.Font>(Fonts + file + ".ttf");
             if (source == null) throw new InvalidOperationException("Missing source font " + file);
-            var font = TMP_FontAsset.CreateFontAsset(source, 72, 8, GlyphRenderMode.SDFAA, 2048, 2048, AtlasPopulationMode.Dynamic);
+            var font = TMP_FontAsset.CreateFontAsset(source, 100, 8, GlyphRenderMode.SDFAA, 2048, 2048, AtlasPopulationMode.Dynamic);
             font.name = assetName;
             string chars = string.Concat(Enumerable.Range(32, 95).Select(c => (char)c))
                 + "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдеёжзийклмнопрстуфхцчшщъыьэюя—–«»•…";
             if (punctuation) chars += "↑→×";
-            if (!font.TryAddCharacters(chars, out string missing)) throw new InvalidOperationException(file + " missing: " + missing);
+            if (!font.TryAddCharacters(chars, out string missing))
+            {
+                // Keep the supplied lettering intact; unsupported punctuation uses
+                // the existing static font, never replacement boxes.
+                var fallback = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(Fonts + "GolosTextSDF.asset");
+                if (fallback == null || missing.Any(c => char.IsLetterOrDigit(c) || !fallback.HasCharacter(c)))
+                    throw new InvalidOperationException(file + " missing: " + missing);
+                font.fallbackFontAssetTable = new System.Collections.Generic.List<TMP_FontAsset> { fallback };
+                Debug.Log(file + " punctuation fallback: " + missing);
+            }
             font.atlasPopulationMode = AtlasPopulationMode.Static;
             AssetDatabase.CreateAsset(font, path);
             AssetDatabase.AddObjectToAsset(font.material, font);
@@ -269,7 +278,7 @@ namespace MezhduParami.Editor
             var image = Component<UnityEngine.UI.Image>(rect); image.enabled = true; image.sprite = rounded;
             image.type = UnityEngine.UI.Image.Type.Sliced; image.color = ColorOf(color); image.raycastTarget = false;
             image.pixelsPerUnitMultiplier = 2;
-            if (color == Paper) { var tint = image.color; tint.a = .94f; image.color = tint; }
+            if (color == Paper) { var tint = image.color; tint.a = .82f; image.color = tint; }
             var effect = rect.GetComponent<UnityEngine.UI.Shadow>();
             if (effect != null) effect.enabled = false;
         }
