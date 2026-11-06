@@ -25,6 +25,8 @@
 *.asset whitespace=-blank-at-eol
 *.unity whitespace=-blank-at-eol
 *.prefab whitespace=-blank-at-eol
+*.anim text eol=lf whitespace=-blank-at-eol
+*.controller text eol=lf whitespace=-blank-at-eol
 *.scenetemplate whitespace=-blank-at-eol
 *.mat whitespace=-blank-at-eol
 "Unity/Assets/TextMesh Pro/**" whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab

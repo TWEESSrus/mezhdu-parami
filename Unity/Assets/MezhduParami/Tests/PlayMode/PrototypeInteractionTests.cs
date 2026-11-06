@@ -80,6 +80,8 @@ namespace MezhduParami.Tests
 
         [UnityTest] public IEnumerator InputMovesPlayerAndFurnitureStopsThem()
         {
+            Teleport(new Vector2(-5.6f, 3.55f));
+            yield return null;
             var start = player.transform.position;
             yield return Press(Key.D);
             yield return new WaitForSeconds(0.2f);
@@ -89,16 +91,18 @@ namespace MezhduParami.Tests
             Assert.That(player.GetComponent<Rigidbody2D>().linearVelocity.magnitude,
                 Is.EqualTo(player.Speed).Within(0.05f));
             yield return Press();
-            Teleport(new Vector2(-5, 0));
+            var desk = GameObject.Find("StudyDesk").GetComponent<BoxCollider2D>().bounds;
+            Teleport(new Vector2(desk.center.x, desk.min.y - 0.65f));
             yield return Press(Key.W);
             yield return new WaitForSeconds(0.6f);
-            Assert.That(player.GetComponent<Rigidbody2D>().position.y, Is.LessThan(0.6f), "Desk should block movement");
+            Assert.That(player.GetComponent<Rigidbody2D>().position.y, Is.LessThan(desk.min.y - 0.2f), "Desk should block movement");
             yield return Press();
         }
 
         [UnityTest] public IEnumerator EOpensActivityCancelIsFreeAndConfirmationRunsOnce()
         {
-            Teleport(new Vector2(-5, 0));
+            var desk = GameObject.Find("StudyDesk").GetComponent<BoxCollider2D>().bounds;
+            Teleport(new Vector2(desk.center.x, desk.min.y - 0.65f));
             yield return null;
             yield return Press(Key.E);
             Assert.That(ui.DialogPanel.activeSelf, Is.True);
@@ -117,7 +121,7 @@ namespace MezhduParami.Tests
             Assert.That(ui.Day.IntelligenceExperience, Is.EqualTo(1));
             Assert.That(ui.DialogPanel.activeSelf, Is.False);
             yield return Press();
-            Teleport(new Vector2(2.2f, -0.8f));
+            Teleport((Vector2)GameObject.Find("Sasha").transform.position + Vector2.up * 0.9f);
             yield return null;
             yield return Press(Key.E);
             Assert.That(ui.DialogBody.text, Does.Contain("Привет"));
@@ -125,6 +129,29 @@ namespace MezhduParami.Tests
             yield return Press(Key.Escape);
             Assert.That(ui.Day.Period, Is.EqualTo(1), "Reading and cancelling the offer must be free");
             Assert.That(ui.Promise.State, Is.EqualTo(PromiseState.NotAccepted));
+        }
+
+        [UnityTest] public IEnumerator CampusEntranceIsPassableAndCameraAndWalkCycleFollowPlayer()
+        {
+            var view = Camera.main;
+            var start = player.transform.position;
+            float initialCameraY = view.transform.position.y;
+            Assert.That(player.WalkAnimator, Is.Not.Null);
+            var visual = player.WalkAnimator.GetComponent<SpriteRenderer>();
+            Assert.That(visual.sprite, Is.Not.Null);
+            var idle = visual.sprite;
+            Assert.That(player.WalkAnimator.speed, Is.Zero);
+            yield return Press(Key.W);
+            yield return new WaitForSeconds(0.32f);
+            Assert.That(player.WalkAnimator.speed, Is.EqualTo(1f));
+            Assert.That(visual.sprite, Is.Not.EqualTo(idle), "The authored walk loop should advance with movement");
+            yield return new WaitForSeconds(0.83f);
+            Assert.That(player.transform.position.y, Is.GreaterThan(start.y + 2.5f), "Walk through the mapped entrance into the hall");
+            Assert.That(view.transform.position.y, Is.GreaterThan(initialCameraY + 1.5f));
+            yield return Press();
+            yield return null;
+            Assert.That(player.WalkAnimator.speed, Is.Zero);
+            Assert.That(ui.Day.Period, Is.Zero);
         }
 
         [UnityTest] public IEnumerator NightCannotBeDismissedAndDoubleClickChargesFoodOnce()

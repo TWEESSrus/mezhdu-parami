@@ -9,9 +9,11 @@ namespace MezhduParami
     {
         public PrototypeUI UI;
         public SpriteRenderer Shirt;
+        public Animator WalkAnimator;
         [SerializeField] private float speed = 3f;
         private Rigidbody2D body;
         private Vector2 movement;
+        private bool walking;
         public float Speed => speed;
 
         private void Awake() => body = GetComponent<Rigidbody2D>();
@@ -39,6 +41,11 @@ namespace MezhduParami
         {
             var group = GetComponent<SortingGroup>();
             if (group != null) group.sortingOrder = Mathf.RoundToInt(-transform.position.y * 16);
+            if (WalkAnimator == null) return;
+            bool moving = UI != null && !UI.InputBlocked && movement.sqrMagnitude > 0f && body.linearVelocity.sqrMagnitude > 0.01f;
+            WalkAnimator.speed = moving ? 1f : 0f;
+            if (walking && !moving) WalkAnimator.Play(0, 0, 0f);
+            walking = moving;
         }
 
         private void OnDisable()

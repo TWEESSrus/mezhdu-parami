@@ -72,6 +72,16 @@ namespace MezhduParami
             var ui = FindFirstObjectByType<PrototypeUI>();
             ui.SelectStudent(true);
             yield return null;
+            if (scenario == "campus") yield break;
+            if (scenario == "library" || scenario == "north")
+            {
+                var at = scenario == "north" ? new Vector3(-4.25f, 17.68f)
+                    : GameObject.Find("StudyDesk").transform.position + Vector3.down * 2f;
+                ui.Player.transform.position = at;
+                ui.Player.GetComponent<Rigidbody2D>().position = at;
+                yield return new WaitForSeconds(1f);
+                yield break;
+            }
             if (scenario == "offer")
             {
                 ui.OpenInteraction(GameObject.Find("Sasha").GetComponent<WorldInteraction>());
