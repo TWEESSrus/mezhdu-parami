@@ -12,6 +12,17 @@ namespace MezhduParami
         public TMP_Text Prompt;
         public TMP_Text Feedback;
         public TMP_Text QuestStatus;
+        public TMP_Text MoneyValue;
+        public TMP_Text EnergyValue;
+        public TMP_Text HealthValue;
+        public TMP_Text StudyValue;
+        public UnityEngine.UI.Image EnergyFill;
+        public UnityEngine.UI.Image HealthFill;
+        public CanvasGroup HudGroup;
+        public CanvasGroup FooterGroup;
+        public CanvasGroup FeedbackGroup;
+        public GameObject ModalBackdrop;
+        public GameObject PromptCard;
         public GameObject SelectionPanel;
         public GameObject DialogPanel;
         public TMP_Text DialogTitle;
@@ -27,6 +38,8 @@ namespace MezhduParami
         private ActivityDefinition pendingActivity;
         private string student = "Студент";
         private int lastInputFrame = -1;
+        private string observedFeedback;
+        private float feedbackRemaining;
         public PrototypeDay Day { get; private set; } = new PrototypeDay();
         public SashaPromise Promise { get; private set; }
         public bool InputBlocked => screen != Screen.Explore;
@@ -34,11 +47,23 @@ namespace MezhduParami
         private void Start()
         {
             Promise = new SashaPromise(QuestDefinition);
-            Header.text = "МЕЖДУ ПАРАМИ    /    Первые дни в общаге";
-            Feedback.text = "Трёхдневный прототип • Временная графика • J — журнал и обещания";
+            Feedback.text = "Первый курс начинается здесь. Выбери героя.";
             SelectionPanel.SetActive(true);
             DialogPanel.SetActive(false);
             RefreshStatus();
+        }
+
+        private void LateUpdate()
+        {
+            if (Feedback != null && observedFeedback != Feedback.text)
+            {
+                observedFeedback = Feedback.text;
+                feedbackRemaining = 10f;
+            }
+            // Keep notifications long enough to read after a dialog closes.
+            if (screen == Screen.Explore)
+                feedbackRemaining = Mathf.Max(0f, feedbackRemaining - Time.unscaledDeltaTime);
+            SyncPresentation();
         }
 
         private void Update()
@@ -67,7 +92,11 @@ namespace MezhduParami
             RefreshStatus();
         }
 
-        public void SetPrompt(string text) => Prompt.text = text;
+        public void SetPrompt(string text)
+        {
+            Prompt.text = text;
+            SyncPresentation();
+        }
 
         public void OpenInteraction(WorldInteraction target)
         {
@@ -198,7 +227,7 @@ namespace MezhduParami
         {
             if (screen != Screen.Explore) return;
             ShowDialog(Screen.Journal, "Журнал и известные сроки",
-                $"День {Day.DayNumber} из {Day.TotalDays} • {Day.PeriodLabel}\nГотовность к учёбе: {Day.Readiness}/6. Экзаменов в этом срезе нет.\n\n"
+                $"{student} • День {Day.DayNumber} из {Day.TotalDays} • {Day.PeriodLabel}\nИнтеллект: {Day.IntelligenceLevel} • Опыт: {Day.IntelligenceExperience}\nГотовность к учёбе: {Day.Readiness}/6. Экзаменов в этом срезе нет.\n\n"
                 + Promise.Journal(Day)
                 + $"\n\nДоверие Саши: {Signed(Promise.Trust)}.\nРазовая смена: {QuestDefinition.DeadlineLabel}, +{QuestDefinition.SpecialShift.MoneyDelta}; нужна энергия 20 и свободная смена за этот день.",
                 "Закрыть", false);
@@ -225,6 +254,7 @@ namespace MezhduParami
             pendingActivity = null;
             DialogPanel.SetActive(false);
             screen = Screen.Explore;
+            SyncPresentation();
         }
 
         private void OpenPause() => ShowDialog(Screen.Pause, "Пауза",
@@ -242,14 +272,52 @@ namespace MezhduParami
             CancelButton.gameObject.SetActive(cancel);
             DialogPanel.SetActive(true);
             Prompt.text = "";
+            SyncPresentation();
         }
 
         private void RefreshStatus()
         {
-            Status.text = $"{student}  •  День {Day.DayNumber}/{Day.TotalDays} / {Day.PeriodLabel}    |    Деньги {Day.Money}    Энергия {Day.Energy}/100    Здоровье {Day.Health}/100    Интеллект {Day.IntelligenceLevel} ({Day.IntelligenceExperience} опыта)";
-            QuestStatus.text = Promise.State == PromiseState.Promised
-                ? "Обещание Саше: " + QuestDefinition.DeadlineLabel + " • Помощь или смена +80 • J — журнал"
-                : $"Доверие Саши: {Signed(Promise.Trust)} • Готовность {Day.Readiness}/6 • J — журнал и сроки";
+            Header.text = $"День {Day.DayNumber}";
+            Status.text = Day.IsFinished ? "Итог первых дней" : Day.IsComplete ? "Ночь • отдых" : "Первый курс • " + Day.PeriodLabel;
+            if (MoneyValue != null) MoneyValue.text = Day.Money.ToString();
+            if (EnergyValue != null) EnergyValue.text = $"{Day.Energy}/100";
+            if (HealthValue != null) HealthValue.text = $"{Day.Health}/100";
+            if (StudyValue != null) StudyValue.text = $"{Day.Readiness}/6";
+            if (EnergyFill != null) EnergyFill.fillAmount = Day.Energy / 100f;
+            if (HealthFill != null) HealthFill.fillAmount = Day.Health / 100f;
+            switch (Promise.State)
+            {
+                case PromiseState.Promised:
+                    QuestStatus.text = "Помочь Саше • " + QuestDefinition.DeadlineLabel;
+                    break;
+                case PromiseState.Fulfilled: QuestStatus.text = "Обещание выполнено"; break;
+                case PromiseState.Broken: QuestStatus.text = "Обещание нарушено"; break;
+                case PromiseState.Declined: QuestStatus.text = "Без обещаний"; break;
+                default:
+                    QuestStatus.text = Day.DayNumber == QuestDefinition.OfferDay ? "Знакомство с Сашей" : "Без обещаний";
+                    break;
+            }
+            SyncPresentation();
+        }
+
+        private void SyncPresentation()
+        {
+            bool explore = screen == Screen.Explore;
+            SetGroup(HudGroup, screen != Screen.Selection, explore);
+            SetGroup(FooterGroup, explore, explore);
+            SetGroup(FeedbackGroup, explore && feedbackRemaining > 0f && !string.IsNullOrWhiteSpace(Feedback.text), false);
+            if (ModalBackdrop != null && ModalBackdrop.activeSelf != InputBlocked)
+                ModalBackdrop.SetActive(InputBlocked);
+            bool showPrompt = explore && !string.IsNullOrWhiteSpace(Prompt.text);
+            if (PromptCard != null && PromptCard.activeSelf != showPrompt) PromptCard.SetActive(showPrompt);
+        }
+
+        private static void SetGroup(CanvasGroup group, bool visible, bool interactive)
+        {
+            if (group == null) return;
+            group.alpha = visible ? 1f : 0f;
+            group.interactable = visible && interactive;
+            group.blocksRaycasts = visible && interactive;
         }
 
         private static string Signed(int value) => value > 0 ? "+" + value : value.ToString();

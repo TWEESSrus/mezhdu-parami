@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -152,6 +153,55 @@ namespace MezhduParami.Tests
             yield return null;
             Assert.That(player.WalkAnimator.speed, Is.Zero);
             Assert.That(ui.Day.Period, Is.Zero);
+        }
+
+        [UnityTest] public IEnumerator CampusHudTracksLibraryVisitAndJournalButtonOpensWithoutSpendingTime()
+        {
+            Assert.That(ui.SelectionPanel.activeInHierarchy, Is.False);
+            Assert.That(ui.HudGroup, Is.Not.Null, "The HUD must be wired in the saved scene");
+            Assert.That(ui.HudGroup.alpha, Is.EqualTo(1f));
+            Assert.That(ui.HudGroup.interactable, Is.True);
+            Assert.That(ui.MoneyValue, Is.Not.Null);
+            Assert.That(ui.MoneyValue.text, Is.EqualTo(ui.Day.Money.ToString()));
+            Assert.That(ui.EnergyFill, Is.Not.Null);
+            Assert.That(ui.EnergyFill.fillAmount, Is.EqualTo(ui.Day.Energy / 100f).Within(0.001f));
+
+            var minimap = Object.FindFirstObjectByType<CampusMinimap>();
+            Assert.That(minimap, Is.Not.Null, "The saved scene must have a minimap");
+            Assert.That(minimap.Player, Is.SameAs(player.transform));
+            Assert.That(minimap.MapArea, Is.Not.Null);
+            Assert.That(minimap.PlayerMarker, Is.Not.Null);
+            Assert.That(minimap.PlayerMarker.parent, Is.SameAs(minimap.MapArea));
+            Canvas.ForceUpdateCanvases();
+            yield return null;
+            var start = (Vector2)minimap.MapArea.InverseTransformPoint(minimap.PlayerMarker.position);
+
+            var desk = GameObject.Find("StudyDesk").GetComponent<BoxCollider2D>().bounds;
+            Teleport(new Vector2(desk.center.x, desk.min.y - 0.65f));
+            yield return null;
+            Canvas.ForceUpdateCanvases();
+            yield return null;
+
+            var area = minimap.MapArea.rect;
+            var position = (Vector2)minimap.MapArea.InverseTransformPoint(minimap.PlayerMarker.position);
+            var expected = CampusMinimap.WorldToMapPosition(player.transform.position, minimap.WorldBounds, area);
+            Assert.That(position.x, Is.GreaterThan(start.x), "The library is east of the entrance");
+            Assert.That(position.y, Is.GreaterThan(start.y), "The library is north of the entrance");
+            Assert.That(Vector2.Distance(position, expected), Is.LessThan(0.01f));
+            var markerBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(minimap.MapArea, minimap.PlayerMarker);
+            Assert.That(area.Contains((Vector2)markerBounds.min) && area.Contains((Vector2)markerBounds.max), Is.True,
+                "The player marker must stay inside the map at the library");
+
+            var journalButton = ui.GetComponentsInChildren<UnityEngine.UI.Button>()
+                .SingleOrDefault(button => Enumerable.Range(0, button.onClick.GetPersistentEventCount())
+                    .Any(index => button.onClick.GetPersistentTarget(index) == ui
+                        && button.onClick.GetPersistentMethodName(index) == nameof(PrototypeUI.OpenJournal)));
+            Assert.That(journalButton, Is.Not.Null, "The visible HUD needs a wired journal button");
+            Assert.That(journalButton.IsInteractable(), Is.True);
+            journalButton.onClick.Invoke();
+            Assert.That(ui.DialogPanel.activeInHierarchy, Is.True);
+            Assert.That(ui.DialogTitle.text, Does.Contain("Журнал"));
+            Assert.That(ui.Day.Period, Is.Zero, "Moving and opening the journal must not advance time");
         }
 
         [UnityTest] public IEnumerator NightCannotBeDismissedAndDoubleClickChargesFoodOnce()

@@ -23,7 +23,7 @@ namespace MezhduParami
                 closest = distance;
                 target = candidate;
             }
-            UI.SetPrompt(target == null ? "Подойди к столу, кровати, доске объявлений или Саше."
+            UI.SetPrompt(target == null ? ""
                 : "E — " + target.DisplayName);
             if (target != null && Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame)
                 UI.OpenInteraction(target);

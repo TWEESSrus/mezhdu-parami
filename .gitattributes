@@ -19,6 +19,7 @@
 *.wav binary
 *.ogg binary
 *.mp3 binary
+*.ttf binary
 
 # Unity's serializer writes empty YAML fields with a trailing space.
 *.meta whitespace=-blank-at-eol
@@ -30,3 +31,5 @@
 *.scenetemplate whitespace=-blank-at-eol
 *.mat whitespace=-blank-at-eol
 "Unity/Assets/TextMesh Pro/**" whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
+# Preserve the upstream font license verbatim.
+Unity/Assets/MezhduParami/Fonts/Interface/*-OFL.txt whitespace=-blank-at-eol

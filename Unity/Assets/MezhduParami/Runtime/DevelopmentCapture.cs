@@ -11,6 +11,7 @@ namespace MezhduParami
     {
         private string destination;
         private string scenario = "selection";
+        private int width = 1280, height = 720;
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Initialize()
         {
@@ -21,6 +22,14 @@ namespace MezhduParami
             capture.destination = args[index + 1];
             int scenarioIndex = Array.IndexOf(args, "--capture-scenario");
             if (scenarioIndex >= 0 && scenarioIndex + 1 < args.Length) capture.scenario = args[scenarioIndex + 1];
+            capture.width = CaptureDimension(args, "--capture-width", 1280);
+            capture.height = CaptureDimension(args, "--capture-height", 720);
+        }
+        private static int CaptureDimension(string[] args, string flag, int fallback)
+        {
+            int index = Array.IndexOf(args, flag);
+            return index >= 0 && index + 1 < args.Length && int.TryParse(args[index + 1], out int value)
+                && value >= 480 && value <= 3840 ? value : fallback;
         }
         private IEnumerator Start()
         {
@@ -30,10 +39,10 @@ namespace MezhduParami
             // Render the same camera and UI into an explicit target for this
             // opt-in check instead of depending on the desktop swapchain.
             var camera = Camera.main;
-            var target = new RenderTexture(1280, 720, 24);
+            var target = new RenderTexture(width, height, 24);
             target.Create();
             camera.targetTexture = target;
-            camera.aspect = 1280f / 720f;
+            camera.aspect = (float)width / height;
             foreach (var canvas in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
             {
                 canvas.renderMode = RenderMode.ScreenSpaceCamera;
@@ -53,8 +62,8 @@ namespace MezhduParami
             camera.Render();
             var previous = RenderTexture.active;
             RenderTexture.active = target;
-            var texture = new Texture2D(1280, 720, TextureFormat.RGB24, false);
-            texture.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
+            var texture = new Texture2D(width, height, TextureFormat.RGB24, false);
+            texture.ReadPixels(new Rect(0, 0, width, height), 0, 0);
             texture.Apply();
             System.IO.File.WriteAllBytes(destination, texture.EncodeToPNG());
             RenderTexture.active = previous;
