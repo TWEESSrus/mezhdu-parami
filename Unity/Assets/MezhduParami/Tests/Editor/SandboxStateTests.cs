@@ -1,0 +1,109 @@
+using NUnit.Framework;
+
+namespace MezhduParami.Tests
+{
+    public sealed class SandboxStateTests
+    {
+        [Test] public void BuyingDoesNotGrantExperienceAndReadingGrantsItOnce()
+        {
+            var state = new SandboxState();
+            Assert.That(state.ReadBook(out _), Is.False);
+            Assert.That(state.BuyBook(out _), Is.True);
+            Assert.That(state.Money, Is.EqualTo(60));
+            Assert.That(state.IntelligenceExperience, Is.Zero);
+            Assert.That(state.BuyBook(out _), Is.False);
+            Assert.That(state.ReadBook(out _), Is.True);
+            Assert.That(state.ReadBook(out _), Is.False);
+            Assert.That(state.IntelligenceExperience, Is.EqualTo(3));
+            Assert.That(state.IntelligenceLevel, Is.EqualTo(1));
+            Assert.That(state.Energy, Is.EqualTo(65));
+        }
+        [Test] public void KitIsNotConsumedAtFullHealthAndOnlyTwoCanBeBought()
+        {
+            var state = new SandboxState();
+            state.BuyKit(out _); state.BuyKit(out _);
+            Assert.That(state.BuyKit(out _), Is.False);
+            Assert.That(state.Money, Is.EqualTo(80));
+            Assert.That(state.UseKit(out _), Is.True);
+            Assert.That(state.Health, Is.EqualTo(100));
+            Assert.That(state.UseKit(out _), Is.False);
+            Assert.That(state.Kits, Is.EqualTo(1));
+            Assert.That(state.KitsUsed, Is.EqualTo(1));
+        }
+        [Test] public void ReadingAndWorkCannotSpendMissingEnergy()
+        {
+            var state = new SandboxState();
+            state.BuyBook(out _);
+            for (int i = 0; i < 4; i++) Assert.That(state.Study(out _), Is.True);
+            Assert.That(state.Energy, Is.Zero);
+            Assert.That(state.ReadBook(out _), Is.False);
+            Assert.That(state.BookRead, Is.False);
+            Assert.That(state.BeginWork(SandboxJob.Sorting, 1, out _), Is.False);
+            Assert.That(state.ActiveOrder, Is.Null);
+            Assert.That(state.Money, Is.EqualTo(60));
+        }
+        [Test] public void CopyCenterRequiresSkillWhichCanAlsoBeEarnedByStudy()
+        {
+            var state = new SandboxState();
+            Assert.That(state.BeginWork(SandboxJob.CopyCenter, 1, out _), Is.False);
+            for (int i = 0; i < 3; i++) state.Study(out _);
+            Assert.That(state.BookOwned, Is.False);
+            Assert.That(state.BeginWork(SandboxJob.CopyCenter, 1, out _), Is.True);
+        }
+        [Test] public void PartialOrderCancellationAndStaleInputNeverPay()
+        {
+            var state = new SandboxState(); state.BeginWork(SandboxJob.Sorting, 11, out _);
+            var order = state.ActiveOrder;
+            state.Sort(order.Id, order.Target(0), out _); state.Sort(order.Id, order.Target(1), out _);
+            state.CancelWork();
+            Assert.That(state.Sort(order.Id, order.Target(2), out _), Is.False);
+            Assert.That(state.Money, Is.EqualTo(120)); Assert.That(state.Energy, Is.EqualTo(80));
+            state.BeginWork(SandboxJob.Sorting, 11, out _);
+            Assert.That(state.Sort(order.Id, order.Target(2), out _), Is.False);
+            Assert.That(state.ActiveOrder.Step, Is.Zero);
+        }
+        [Test] public void SortingHasNoMistakePenaltyAndRewardsExactlyOnce()
+        {
+            var state = new SandboxState(); state.BeginWork(SandboxJob.Sorting, 12, out _);
+            var order = state.ActiveOrder;
+            Assert.That(state.Sort(order.Id, (order.Target(0) + 1) % 3, out _), Is.False);
+            Assert.That(state.ActiveOrder.Step, Is.Zero);
+            Assert.That(state.Energy, Is.EqualTo(80));
+            for (int i = 0; i < 3; i++) Assert.That(state.Sort(order.Id, order.Target(i), out _), Is.True);
+            Assert.That(state.Sort(order.Id, order.Target(2), out _), Is.False);
+            Assert.That(state.Money, Is.EqualTo(145)); Assert.That(state.Energy, Is.EqualTo(65));
+            Assert.That(state.SortingCompleted, Is.EqualTo(1)); Assert.That(state.ActiveOrder, Is.Null);
+        }
+        [Test] public void CopyChecksAllSettingsBeforePayingAndCannotPayAgain()
+        {
+            var state = new SandboxState(); state.BuyBook(out _); state.ReadBook(out _);
+            state.BeginWork(SandboxJob.CopyCenter, 13, out _); var order = state.ActiveOrder;
+            Assert.That(state.Copy(order.Id, (order.Target(0) + 1) % 3, order.Target(1), order.Target(2), out _), Is.False);
+            Assert.That(state.Money, Is.EqualTo(60)); Assert.That(state.Energy, Is.EqualTo(65));
+            Assert.That(state.Copy(order.Id, order.Target(0), order.Target(1), order.Target(2), out _), Is.True);
+            Assert.That(state.Copy(order.Id, order.Target(0), order.Target(1), order.Target(2), out _), Is.False);
+            Assert.That(state.Money, Is.EqualTo(105)); Assert.That(state.Energy, Is.EqualTo(45));
+            Assert.That(state.CopyCompleted, Is.EqualTo(1));
+        }
+        [Test] public void QuickWorkUnlocksOnlyAfterSuccessAndUsesSamePrice()
+        {
+            var state = new SandboxState(); Assert.That(state.QuickWork(SandboxJob.Sorting, out _), Is.False);
+            state.BeginWork(SandboxJob.Sorting, 4, out _); var order = state.ActiveOrder;
+            for (int i = 0; i < 3; i++) state.Sort(order.Id, order.Target(i), out _);
+            Assert.That(state.QuickWork(SandboxJob.Sorting, out _), Is.True);
+            Assert.That(state.Money, Is.EqualTo(170)); Assert.That(state.Energy, Is.EqualTo(50));
+            state.BeginWork(SandboxJob.Sorting, 5, out _);
+            Assert.That(state.QuickWork(SandboxJob.Sorting, out _), Is.False);
+            Assert.That(state.BuyBook(out _), Is.False);
+            Assert.That(state.Rest(out _), Is.False);
+        }
+        [Test] public void RestAndStudyHaveCapsAndDoNotRequireCalendar()
+        {
+            var state = new SandboxState();
+            for (int i = 0; i < 6; i++) { state.Rest(out _); Assert.That(state.Study(out _), Is.True); }
+            Assert.That(state.Study(out _), Is.False);
+            state.Rest(out _); Assert.That(state.Rest(out _), Is.False);
+            Assert.That(state.Energy, Is.EqualTo(100)); Assert.That(state.Readiness, Is.EqualTo(6));
+        }
+    }
+}

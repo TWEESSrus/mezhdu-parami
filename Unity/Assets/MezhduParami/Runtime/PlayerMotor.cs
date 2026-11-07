@@ -4,10 +4,13 @@ using UnityEngine.Rendering;
 
 namespace MezhduParami
 {
+    public interface IPlayerInputGate { bool InputBlocked { get; } }
+
     [RequireComponent(typeof(Rigidbody2D))]
     public sealed class PlayerMotor : MonoBehaviour
     {
         public PrototypeUI UI;
+        public MonoBehaviour InputGate;
         public SpriteRenderer Shirt;
         public Animator WalkAnimator;
         [SerializeField] private float speed = 3f;
@@ -15,6 +18,7 @@ namespace MezhduParami
         private Vector2 movement;
         private bool walking;
         public float Speed => speed;
+        private bool IsBlocked => InputGate is IPlayerInputGate gate ? gate.InputBlocked : UI == null || UI.InputBlocked;
 
         private void Awake() => body = GetComponent<Rigidbody2D>();
 
@@ -24,7 +28,7 @@ namespace MezhduParami
         {
             movement = Vector2.zero;
             var keyboard = Keyboard.current;
-            if (keyboard == null || UI == null || UI.InputBlocked) return;
+            if (keyboard == null || IsBlocked) return;
             float x = (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed ? 1 : 0)
                 - (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed ? 1 : 0);
             float y = (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed ? 1 : 0)
@@ -34,7 +38,7 @@ namespace MezhduParami
 
         private void FixedUpdate()
         {
-            body.linearVelocity = UI != null && !UI.InputBlocked ? movement * speed : Vector2.zero;
+            body.linearVelocity = !IsBlocked ? movement * speed : Vector2.zero;
         }
 
         private void LateUpdate()
@@ -42,7 +46,7 @@ namespace MezhduParami
             var group = GetComponent<SortingGroup>();
             if (group != null) group.sortingOrder = Mathf.RoundToInt(-transform.position.y * 16);
             if (WalkAnimator == null) return;
-            bool moving = UI != null && !UI.InputBlocked && movement.sqrMagnitude > 0f && body.linearVelocity.sqrMagnitude > 0.01f;
+            bool moving = !IsBlocked && movement.sqrMagnitude > 0f && body.linearVelocity.sqrMagnitude > 0.01f;
             WalkAnimator.speed = moving ? 1f : 0f;
             if (walking && !moving) WalkAnimator.Play(0, 0, 0f);
             walking = moving;

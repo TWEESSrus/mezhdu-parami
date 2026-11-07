@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/MezhduParami/Scenes/MechanicsSandbox.unity
+    guid: 4de64cfc3d745fb44b9c6e3e254cbf74
+  - enabled: 1
     path: Assets/MezhduParami/Scenes/PrototypeDorm.unity
     guid: eb936f43762086f4686f505df2210beb
   m_configObjects:

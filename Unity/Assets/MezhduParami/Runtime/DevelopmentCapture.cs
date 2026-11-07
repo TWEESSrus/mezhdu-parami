@@ -35,6 +35,8 @@ namespace MezhduParami
         {
             yield return new WaitUntil(() => UnityEngine.Rendering.SplashScreen.isFinished);
             yield return PrepareScenario();
+            Component uiRoot = FindFirstObjectByType<PrototypeUI>();
+            if (uiRoot == null) uiRoot = FindFirstObjectByType<MechanicsSandboxUI>();
             // Native captures keep the actual viewport and Overlay pipeline.
             // The offscreen fallback below is useful for typography only and
             // must not be used as evidence that window compositing is correct.
@@ -45,7 +47,7 @@ namespace MezhduParami
                 var native = ScreenCapture.CaptureScreenshotAsTexture();
                 System.IO.File.WriteAllBytes(destination, native.EncodeToPNG());
                 Destroy(native);
-                Debug.Log("Native capture: viewport=" + Camera.main.rect + ", UI=" + FindFirstObjectByType<PrototypeUI>().GetComponent<Canvas>().renderMode);
+                Debug.Log("Native capture: viewport=" + Camera.main.rect + ", UI=" + uiRoot.GetComponent<Canvas>().renderMode);
                 Application.Quit();
                 yield break;
             }
@@ -67,7 +69,7 @@ namespace MezhduParami
             }
             yield return null;
             Canvas.ForceUpdateCanvases();
-            foreach (var text in FindFirstObjectByType<PrototypeUI>().GetComponentsInChildren<TMPro.TMP_Text>())
+            foreach (var text in uiRoot.GetComponentsInChildren<TMPro.TMP_Text>())
             {
                 text.ForceMeshUpdate();
                 if (text.isTextOverflowing) Debug.LogError("QA text overflow: " + text.name);
@@ -91,6 +93,34 @@ namespace MezhduParami
 
         private IEnumerator PrepareScenario()
         {
+            var sandbox = FindFirstObjectByType<MechanicsSandboxUI>();
+            if (sandbox != null)
+            {
+                if (scenario == "shop") sandbox.OpenStation(SandboxStationKind.Shop);
+                else if (scenario == "inventory")
+                {
+                    sandbox.State.BuyBook(out _); sandbox.State.BuyKit(out _); sandbox.Refresh(); sandbox.OpenInventory();
+                }
+                else if (scenario == "sorting" || scenario == "copy")
+                {
+                    if (scenario == "copy") { sandbox.State.BuyBook(out _); sandbox.State.ReadBook(out _); sandbox.Refresh(); }
+                    sandbox.OpenStation(scenario == "copy" ? SandboxStationKind.CopyCenter : SandboxStationKind.Sorting);
+                    yield return null; sandbox.Choices[0].onClick.Invoke();
+                }
+                else if (scenario == "tasks-hidden") sandbox.Tasks.Toggle();
+                else if (scenario == "completed")
+                {
+                    sandbox.State.BuyBook(out _); sandbox.State.ReadBook(out _);
+                    sandbox.State.BuyKit(out _); sandbox.State.UseKit(out _);
+                    sandbox.State.BeginWork(SandboxJob.Sorting, 7, out _); var sort = sandbox.State.ActiveOrder;
+                    for (int i = 0; i < 3; i++) sandbox.State.Sort(sort.Id, sort.Target(i), out _);
+                    sandbox.State.BeginWork(SandboxJob.CopyCenter, 8, out _); var copy = sandbox.State.ActiveOrder;
+                    sandbox.State.Copy(copy.Id, copy.Target(0), copy.Target(1), copy.Target(2), out _);
+                    sandbox.Refresh();
+                }
+                yield return null;
+                yield break;
+            }
             if (scenario == "selection") yield break;
             var ui = FindFirstObjectByType<PrototypeUI>();
             ui.SelectStudent(true);
