@@ -1,0 +1,5 @@
+{
+  "name": "MezhduParami.PlayModeTests",
+  "references": ["MezhduParami.Runtime", "Unity.InputSystem", "Unity.TextMeshPro", "Unity.ugui"],
+  "optionalUnityReferences": ["TestAssemblies"]
+}
