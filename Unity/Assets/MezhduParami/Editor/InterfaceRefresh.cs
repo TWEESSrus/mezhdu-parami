@@ -17,6 +17,29 @@ namespace MezhduParami.Editor
         private static Sprite rounded;
         private const string Paper = "30241D", Ink = "F4E7C9", Muted = "D3C2A3", Mint = "A9C48B";
 
+        [MenuItem("Между парами/Исправить область вывода камеры")]
+        public static void RepairViewport()
+        {
+            if (EditorApplication.isPlaying) throw new InvalidOperationException("Stop Play Mode first.");
+            if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().isDirty)
+                throw new InvalidOperationException("Save the active scene first.");
+            var scene = EditorSceneManager.OpenScene(PrototypeSceneBuilder.ScenePath);
+            var camera = Camera.main;
+            var ui = UnityEngine.Object.FindFirstObjectByType<PrototypeUI>();
+            if (camera == null || ui == null) throw new InvalidOperationException("Missing camera or UI.");
+            var pixel = camera.GetComponent<UnityEngine.Rendering.Universal.PixelPerfectCamera>();
+            if (pixel != null) UnityEngine.Object.DestroyImmediate(pixel);
+            camera.rect = new Rect(0, 0, 1, 1);
+            camera.ResetAspect();
+            var canvas = ui.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.worldCamera = null;
+            canvas.sortingOrder = 1000;
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("Repaired full-window camera viewport and overlay UI.");
+        }
+
         [MenuItem("Между парами/Обновить интерфейс и мини-карту")]
         public static void Apply()
         {

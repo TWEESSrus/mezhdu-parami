@@ -35,6 +35,20 @@ namespace MezhduParami
         {
             yield return new WaitUntil(() => UnityEngine.Rendering.SplashScreen.isFinished);
             yield return PrepareScenario();
+            // Native captures keep the actual viewport and Overlay pipeline.
+            // The offscreen fallback below is useful for typography only and
+            // must not be used as evidence that window compositing is correct.
+            if (Array.IndexOf(Environment.GetCommandLineArgs(), "--capture-native") >= 0)
+            {
+                yield return new WaitForSecondsRealtime(2f);
+                yield return new WaitForEndOfFrame();
+                var native = ScreenCapture.CaptureScreenshotAsTexture();
+                System.IO.File.WriteAllBytes(destination, native.EncodeToPNG());
+                Destroy(native);
+                Debug.Log("Native capture: viewport=" + Camera.main.rect + ", UI=" + FindFirstObjectByType<PrototypeUI>().GetComponent<Canvas>().renderMode);
+                Application.Quit();
+                yield break;
+            }
             // A hidden Windows window may have an unpresented black backbuffer.
             // Render the same camera and UI into an explicit target for this
             // opt-in check instead of depending on the desktop swapchain.
@@ -82,6 +96,13 @@ namespace MezhduParami
             ui.SelectStudent(true);
             yield return null;
             if (scenario == "campus") yield break;
+            if (scenario == "away")
+            {
+                ui.Player.transform.position = new Vector3(-4.25f, 0f, 0f);
+                ui.Player.GetComponent<Rigidbody2D>().position = ui.Player.transform.position;
+                yield return new WaitForSeconds(1f);
+                yield break;
+            }
             if (scenario == "library" || scenario == "north")
             {
                 var at = scenario == "north" ? new Vector3(-4.25f, 17.68f)

@@ -133,7 +133,10 @@ namespace MezhduParami.Editor
 
             // The illustrated backdrop and character atlas have different source PPU.
             // Keep their native sampling instead of forcing the placeholder 320x180 grid.
-            camera.GetComponent<PixelPerfectCamera>().enabled = false;
+            var pixel = camera.GetComponent<PixelPerfectCamera>();
+            if (pixel != null) UnityEngine.Object.DestroyImmediate(pixel);
+            camera.rect = new Rect(0, 0, 1, 1);
+            camera.ResetAspect();
             camera.orthographicSize = 5f;
             camera.transform.position = new Vector3(Spawn.x, Spawn.y, camera.transform.position.z);
             var follow = camera.gameObject.AddComponent<CampusCamera>();

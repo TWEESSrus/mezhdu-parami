@@ -79,6 +79,33 @@ namespace MezhduParami.Tests
             Physics2D.SyncTransforms();
         }
 
+        [UnityTest] public IEnumerator FullWindowViewportAndPromptFollowLocation()
+        {
+            var camera = Camera.main;
+            var canvas = ui.GetComponent<Canvas>();
+            Assert.That(camera.rect, Is.EqualTo(new Rect(0, 0, 1, 1)), "No legacy letterbox viewport");
+            Assert.That(canvas.renderMode, Is.EqualTo(RenderMode.ScreenSpaceOverlay));
+            Assert.That(camera.GetComponents<MonoBehaviour>().Any(c => c.GetType().Name == "PixelPerfectCamera"), Is.False);
+            var sasha = GameObject.Find("Sasha").transform.position;
+            Teleport(sasha + Vector3.down);
+            yield return null;
+            yield return null;
+            Assert.That(ui.Prompt.text, Does.Contain("Саша"));
+            Assert.That(ui.PromptCard.activeSelf, Is.True);
+            yield return Press(Key.S);
+            yield return new WaitForSeconds(1.5f);
+            yield return Press();
+            Assert.That(ui.Prompt.text, Is.Empty, "Walking away must clear the old action");
+            Assert.That(ui.PromptCard.activeSelf, Is.False);
+            var desk = GameObject.Find("StudyDesk").GetComponent<BoxCollider2D>().bounds;
+            Teleport(new Vector2(desk.center.x, desk.min.y - .65f));
+            yield return null;
+            yield return null;
+            Assert.That(ui.Prompt.text, Does.Contain("Учебный стол"));
+            Assert.That(ui.PromptCard.activeSelf, Is.True);
+            Assert.That(camera.rect, Is.EqualTo(new Rect(0, 0, 1, 1)));
+        }
+
         [UnityTest] public IEnumerator InputMovesPlayerAndFurnitureStopsThem()
         {
             Teleport(new Vector2(-5.6f, 3.55f));
