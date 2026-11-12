@@ -190,8 +190,8 @@ namespace MezhduParami.Tests
             Assert.That(ui.HudGroup.interactable, Is.True);
             Assert.That(ui.MoneyValue, Is.Not.Null);
             Assert.That(ui.MoneyValue.text, Is.EqualTo(ui.Day.Money.ToString()));
-            Assert.That(ui.EnergyFill, Is.Not.Null);
-            Assert.That(ui.EnergyFill.fillAmount, Is.EqualTo(ui.Day.Energy / 100f).Within(0.001f));
+            Assert.That(ui.EnergyBar, Is.Not.Null);
+            Assert.That(ui.EnergyBar.Energy.fillAmount, Is.EqualTo(ui.Day.Energy / 100f).Within(0.001f));
 
             var minimap = Object.FindFirstObjectByType<CampusMinimap>();
             Assert.That(minimap, Is.Not.Null, "The saved scene must have a minimap");
@@ -231,20 +231,38 @@ namespace MezhduParami.Tests
             Assert.That(ui.Day.Period, Is.Zero, "Moving and opening the journal must not advance time");
         }
 
-        [UnityTest] public IEnumerator NightCannotBeDismissedAndDoubleClickChargesFoodOnce()
+        [UnityTest] public IEnumerator NightCannotBeDismissedAndDoubleClickSleepsOnce()
         {
-            for (int i = 0; i < 3; i++) yield return Confirm("Bed");
+            yield return Confirm("StudyDesk");
+            yield return Confirm("Bed");
+            yield return Confirm("Bed");
             Assert.That(ui.Day.IsComplete, Is.True);
             Assert.That(ui.InputBlocked, Is.True);
             ui.CloseDialog();
-            Assert.That(ui.DialogPanel.activeSelf, Is.True, "Night requires an explicit food choice");
+            Assert.That(ui.DialogPanel.activeSelf, Is.True, "Night requires an explicit sleep choice");
             yield return null;
             ui.PrimaryButton.onClick.Invoke();
             ui.PrimaryButton.onClick.Invoke();
             Assert.That(ui.Day.DayNumber, Is.EqualTo(2));
             Assert.That(ui.Day.Period, Is.Zero);
-            Assert.That(ui.Day.Money, Is.EqualTo(112));
+            Assert.That(ui.Day.Money, Is.EqualTo(120));
             Assert.That(ui.Day.Energy, Is.EqualTo(100));
+            Assert.That(ui.InputBlocked, Is.False);
+        }
+
+        [UnityTest] public IEnumerator BedBlocksThirdRestAndSleepSkipsTheRemainingPeriod()
+        {
+            yield return Confirm("Bed");
+            yield return Confirm("Bed");
+            ui.OpenInteraction(GameObject.Find("Bed").GetComponent<WorldInteraction>());
+            Assert.That(ui.PrimaryButton.interactable, Is.False);
+            Assert.That(ui.SleepOption.gameObject.activeInHierarchy, Is.True);
+            ui.SleepOption.onClick.Invoke();
+            ui.SleepOption.onClick.Invoke();
+            Assert.That(ui.Day.DayNumber, Is.EqualTo(2));
+            Assert.That(ui.Day.Period, Is.Zero);
+            Assert.That(ui.Day.Energy, Is.EqualTo(100));
+            Assert.That(ui.Day.RestsRemaining, Is.EqualTo(2));
             Assert.That(ui.InputBlocked, Is.False);
         }
 
@@ -260,21 +278,24 @@ namespace MezhduParami.Tests
             Assert.That(ui.Day.Period, Is.Zero);
             Assert.That(ui.Day.Readiness, Is.Zero);
             Assert.That(ui.Day.Energy, Is.EqualTo(80));
-            for (int i = 0; i < 3; i++) yield return Confirm("Bed");
-            ui.CancelButton.onClick.Invoke();
-            ui.CancelButton.onClick.Invoke();
+            yield return Confirm("StudyDesk");
+            yield return Confirm("Bed");
+            yield return Confirm("Bed");
+            ui.PrimaryButton.onClick.Invoke();
+            ui.PrimaryButton.onClick.Invoke();
             Assert.That(ui.Day.DayNumber, Is.EqualTo(2));
             Assert.That(ui.Day.Money, Is.EqualTo(120));
             Assert.That(ui.Day.RecoveryLimit, Is.EqualTo(100));
             Assert.That(ui.Promise.Trust, Is.Zero);
-            for (int i = 0; i < 3; i++) yield return Confirm("Bed");
-            Assert.That(ui.SkipSleepButton.gameObject.activeInHierarchy, Is.True);
-            ui.SkipSleepButton.onClick.Invoke();
-            ui.SkipSleepButton.onClick.Invoke();
+            yield return Confirm("Bed");
+            yield return Confirm("Bed");
+            yield return Confirm("StudyDesk");
+            Assert.That(ui.SleepOption.gameObject.activeInHierarchy, Is.True);
+            ui.SleepOption.onClick.Invoke();
+            ui.SleepOption.onClick.Invoke();
             Assert.That(ui.Day.DayNumber, Is.EqualTo(3));
             Assert.That(ui.Day.RecoveryLimit, Is.EqualTo(75));
-            Assert.That(ui.EnergyLimitValue.text, Is.EqualTo("75"));
-            Assert.That(ui.EnergyLimitCaption.text, Does.Contain("НЕДОСЫП"));
+            Assert.That(ui.EnergyBar.Fatigue.fillAmount, Is.EqualTo(.25f).Within(.001f));
         }
 
         private IEnumerator RunPromiseRoute(bool help)
@@ -288,7 +309,9 @@ namespace MezhduParami.Tests
             yield return null;
             ui.PrimaryButton.onClick.Invoke();
             yield return null;
-            for (int i = 0; i < 3; i++) yield return Confirm("Bed");
+            yield return Confirm("StudyDesk");
+            yield return Confirm("Bed");
+            yield return Confirm("Bed");
             yield return null;
             ui.PrimaryButton.onClick.Invoke();
             yield return null;

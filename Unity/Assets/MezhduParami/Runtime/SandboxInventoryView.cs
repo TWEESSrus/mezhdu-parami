@@ -6,12 +6,12 @@ namespace MezhduParami
 {
     public sealed class SandboxInventoryView : MonoBehaviour
     {
-        public Button BookSlot, SnackSlot, UseButton;
-        public Image BookIcon, SnackIcon, PreviewIcon;
-        public TMP_Text BookLabel, SnackLabel, BookCount, SnackCount;
+        public Button BookSlot, SnackSlot, DrinkSlot, UseButton;
+        public Image BookIcon, SnackIcon, DrinkIcon, PreviewIcon;
+        public TMP_Text BookLabel, SnackLabel, DrinkLabel, BookCount, SnackCount, DrinkCount;
         public TMP_Text Category, ItemName, Description, Effect, Feedback, UseLabel;
 
-        private enum Item { None, Book, Snack }
+        private enum Item { None, Book, Snack, Drink }
         private static readonly Color32 SlotColor = new Color32(60, 46, 36, 255);
         private static readonly Color32 SelectedColor = new Color32(118, 84, 47, 255);
         private SandboxState state;
@@ -21,6 +21,7 @@ namespace MezhduParami
         {
             BookSlot.onClick.AddListener(() => Select(Item.Book));
             SnackSlot.onClick.AddListener(() => Select(Item.Snack));
+            DrinkSlot.onClick.AddListener(() => Select(Item.Drink));
         }
 
         public void Open(SandboxState current)
@@ -37,6 +38,7 @@ namespace MezhduParami
             string message = "Выбери предмет.";
             if (selected == Item.Book) state.ReadBook(out message);
             else if (selected == Item.Snack) state.EatSnack(out message);
+            else if (selected == Item.Drink) state.DrinkEnergyDrink(out message);
             Feedback.text = message;
             Refresh();
             return message;
@@ -52,16 +54,18 @@ namespace MezhduParami
 
         private bool Owned(Item item)
         {
-            return item == Item.Book && state.BookOwned || item == Item.Snack && state.Snacks > 0;
+            return item == Item.Book && state.BookOwned || item == Item.Snack && state.Snacks > 0
+                || item == Item.Drink && state.HasEnergyDrink;
         }
 
-        private void Refresh()
+        internal void Refresh()
         {
             if (!Owned(selected))
-                selected = state.BookOwned ? Item.Book : state.Snacks > 0 ? Item.Snack : Item.None;
+                selected = state.BookOwned ? Item.Book : state.Snacks > 0 ? Item.Snack : state.HasEnergyDrink ? Item.Drink : Item.None;
 
             UpdateSlot(BookSlot, BookIcon, BookLabel, BookCount, state.BookOwned ? 1 : 0, selected == Item.Book);
             UpdateSlot(SnackSlot, SnackIcon, SnackLabel, SnackCount, state.Snacks, selected == Item.Snack);
+            UpdateSlot(DrinkSlot, DrinkIcon, DrinkLabel, DrinkCount, state.HasEnergyDrink ? 1 : 0, selected == Item.Drink);
             PreviewIcon.enabled = selected != Item.None;
             Effect.transform.parent.gameObject.SetActive(selected != Item.None);
             UseButton.gameObject.SetActive(selected != Item.None);
@@ -92,10 +96,21 @@ namespace MezhduParami
                     UseLabel.text = "Съесть";
                     UseButton.interactable = state.SnackRecovery > 0;
                     break;
+                case Item.Drink:
+                    PreviewIcon.sprite = DrinkIcon.sprite;
+                    Category.text = "РАСХОДНИК";
+                    ItemName.text = "Энергетик";
+                    Description.text = "До 30 временной энергии. Каждую секунду исчезает 1. Трата на действия усиливает усталость.";
+                    Effect.text = state.BonusEnergy > 0 ? "Предыдущий энергетик ещё действует."
+                        : state.DrinkBonus == 0 ? "Энергия уже полная."
+                        : $"Энергия {state.Energy} → {state.Energy + state.DrinkBonus}\nВременный запас +{state.DrinkBonus}";
+                    UseLabel.text = "Выпить";
+                    UseButton.interactable = state.DrinkBonus > 0;
+                    break;
                 default:
                     Category.text = "";
                     ItemName.text = "Рюкзак пуст";
-                    Description.text = "Учебник и перекус можно купить в лавке.";
+                    Description.text = "Учебник, перекус и энергетик продаются в лавке.";
                     Effect.text = "";
                     UseButton.interactable = false;
                     break;

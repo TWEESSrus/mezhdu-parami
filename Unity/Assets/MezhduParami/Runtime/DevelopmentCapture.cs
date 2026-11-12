@@ -35,7 +35,7 @@ namespace MezhduParami
         private IEnumerator Start()
         {
             yield return new WaitUntil(() => UnityEngine.Rendering.SplashScreen.isFinished);
-            if (FindFirstObjectByType<MechanicsSandboxUI>() != null && (scenario == "campus-night" || scenario == "campus-sleepless"))
+            if (FindFirstObjectByType<MechanicsSandboxUI>() != null && scenario.StartsWith("campus-"))
             {
                 DontDestroyOnLoad(gameObject);
                 yield return SceneManager.LoadSceneAsync("PrototypeDorm");
@@ -129,7 +129,11 @@ namespace MezhduParami
                         sandbox.State.Study(out _);
                     }
                     sandbox.State.Rest(out _);
-                    sandbox.State.Rest(out _);
+                    for (int i = 0; i < 2; i++)
+                    {
+                        sandbox.State.BuySnack(out _);
+                        sandbox.State.EatSnack(out _);
+                    }
                     sandbox.Refresh();
                     if (scenario == "rested")
                     {
@@ -137,6 +141,25 @@ namespace MezhduParami
                         yield return null;
                         sandbox.Choices[1].onClick.Invoke();
                     }
+                }
+                else if (scenario == "drink-item" || scenario == "drink-active" || scenario == "drink-spent")
+                {
+                    for (int i = 0; i < 3; i++) sandbox.State.Study(out _);
+                    for (int i = 0; i < 2; i++)
+                    {
+                        sandbox.State.BuySnack(out _);
+                        sandbox.State.EatSnack(out _);
+                    }
+                    sandbox.State.BuyEnergyDrink(out _);
+                    if (scenario == "drink-item")
+                        sandbox.OpenInventory();
+                    else
+                    {
+                        sandbox.State.DrinkEnergyDrink(out _);
+                        sandbox.State.TickEnergy(3f);
+                        if (scenario == "drink-spent") sandbox.State.Study(out _);
+                    }
+                    sandbox.Refresh();
                 }
                 else if (scenario == "sorting" || scenario == "copy")
                 {
@@ -184,18 +207,26 @@ namespace MezhduParami
                 ui.OpenInteraction(GameObject.Find("Sasha").GetComponent<WorldInteraction>());
                 yield break;
             }
+            if (scenario == "campus-bed" || scenario == "campus-morning")
+            {
+                yield return Confirm(ui, "Bed");
+                yield return Confirm(ui, "Bed");
+                ui.OpenInteraction(GameObject.Find("Bed").GetComponent<WorldInteraction>());
+                if (scenario == "campus-morning") ui.SleepOption.onClick.Invoke();
+                yield break;
+            }
             yield return Confirm(ui, "Sasha");
             if (scenario == "journal") { ui.OpenJournal(); yield break; }
             if (scenario == "campus-night" || scenario == "campus-sleepless")
             {
                 yield return Confirm(ui, "StudyDesk");
                 yield return Confirm(ui, "StudyDesk");
-                if (scenario == "campus-sleepless") ui.SkipSleepButton.onClick.Invoke();
+                if (scenario == "campus-sleepless") ui.SleepOption.onClick.Invoke();
                 yield break;
             }
             while (ui.Day.DayNumber < 3)
             {
-                while (!ui.Day.IsComplete) yield return Confirm(ui, "Bed");
+                while (!ui.Day.IsComplete) yield return Confirm(ui, ui.Day.RestsRemaining > 0 ? "Bed" : "StudyDesk");
                 if (scenario == "night") yield break;
                 ui.PrimaryButton.onClick.Invoke();
                 yield return null;

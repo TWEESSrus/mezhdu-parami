@@ -129,9 +129,12 @@ namespace MezhduParami.Editor
         private static void Layout(MechanicsSandboxUI ui)
         {
             var root = ui.transform;
-            var header = Panel(root, "Header", 18, 18, 910, 102);
+            var header = Panel(root, "Header", 18, 18, 910, 116);
             Label(header, "Title", "ПОЛИГОН МЕХАНИК • БЕЗ КАЛЕНДАРЯ", 22, 14, 10, 750, 30, true);
-            ui.Resources = Label(header, "Resources", "", 17, 14, 47, 650, 48);
+            ui.Resources = Label(header, "Resources", "", 17, 14, 46, 650, 46);
+            var energyBar = Rect(header, "EnergyBar");
+            Place(energyBar, 14, 96, 510, 8);
+            ui.EnergyBar = InterfaceRefresh.ConfigureEnergyMeter(energyBar);
             ui.InventoryButton = Button(header, "Inventory", "I  Рюкзак", 682, 57, 100, 32);
             ui.HelpButton = Button(header, "Help", "Esc  Меню", 790, 12, 106, 30);
             ui.Tasks = ui.GetComponent<TaskTrackerPanel>();
@@ -191,7 +194,16 @@ namespace MezhduParami.Editor
             view.SnackCount = Label(view.SnackSlot.transform, "Count", "", 13, 69, 7, 29, 18);
             view.SnackCount.alignment = TextAlignmentOptions.TopRight;
 
-            for (int i = 2; i < 6; i++)
+            var oldEmpty = area.Find("EmptySlot2");
+            if (oldEmpty != null) oldEmpty.name = "EnergyDrink";
+            view.DrinkSlot = InventorySlot(area, "EnergyDrink", 260);
+            view.DrinkIcon = Icon(view.DrinkSlot.transform, "Icon", DrinkSprite(), 29, 17, 48);
+            view.DrinkLabel = Label(view.DrinkSlot.transform, "Label", "Энергетик", 14, 5, 76, 96, 23);
+            view.DrinkLabel.alignment = TextAlignmentOptions.Center;
+            view.DrinkCount = Label(view.DrinkSlot.transform, "Count", "", 13, 69, 7, 29, 18);
+            view.DrinkCount.alignment = TextAlignmentOptions.TopRight;
+
+            for (int i = 3; i < 6; i++)
             {
                 var empty = Panel(area, "EmptySlot" + i, 24 + i % 3 * 118, 80 + i / 3 * 118, 106, 106);
                 empty.GetComponent<UnityEngine.UI.Image>().color = ColorOf("3C2E24");
@@ -285,6 +297,29 @@ namespace MezhduParami.Editor
                 "................",
                 "................"
             }, "56351D", "F0BA6D", "82A156", "B85737");
+        }
+
+        private static Sprite DrinkSprite()
+        {
+            return CreateItemSprite("InventoryEnergyDrink", new[]
+            {
+                "................",
+                ".....111111.....",
+                "....12222221....",
+                "....13333331....",
+                "....13343331....",
+                "....13443331....",
+                "....14443331....",
+                "....13344431....",
+                "....13344331....",
+                "....13343331....",
+                "....13333331....",
+                "....13333331....",
+                "....12222221....",
+                ".....111111.....",
+                "................",
+                "................"
+            }, "392A2C", "DDD2BC", "984A61", "FFC573");
         }
 
         private static Sprite CreateItemSprite(string name, string[] rows, params string[] palette)

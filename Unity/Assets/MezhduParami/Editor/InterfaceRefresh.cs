@@ -76,8 +76,6 @@ namespace MezhduParami.Editor
             var resources = Rect(hud, "Resources"); Place(resources, 206, 16, 514, 64); Card(resources, Paper);
             ui.MoneyValue = Resource(resources, "Money", "ДЕНЬГИ", "120", 0, Ink);
             ui.EnergyValue = Resource(resources, "Energy", "ЭНЕРГИЯ", "80 / 100", 1, Mint);
-            ui.StudyValue = Resource(resources, "Study", "ГОТОВНОСТЬ", "0 / 6", 3, Ink);
-            ui.EnergyFill = Meter(resources, "EnergyBar", 140, Mint);
             ConfigureEnergyRecovery(ui, resources);
             Hide(resources, "MoneyHint"); Hide(resources, "StudyHint");
 
@@ -164,30 +162,56 @@ namespace MezhduParami.Editor
 
         private static void ConfigureEnergyRecovery(PrototypeUI ui, RectTransform resources)
         {
-            var oldCaption = resources.Find("HealthCaption");
-            if (oldCaption != null) oldCaption.name = "EnergyLimitCaption";
-            var oldValue = resources.Find("HealthValue");
-            if (oldValue != null) oldValue.name = "EnergyLimitValue";
-            var oldBar = resources.Find("HealthBar");
-            if (oldBar != null) UnityEngine.Object.DestroyImmediate(oldBar.gameObject);
-            ui.EnergyLimitValue = Resource(resources, "EnergyLimit", "ПРЕДЕЛ ЭНЕРГИИ", "100", 2, "DDB477");
-            ui.EnergyLimitCaption = resources.Find("EnergyLimitCaption").GetComponent<TMP_Text>();
+            Hide(resources, "HealthCaption"); Hide(resources, "HealthValue"); Hide(resources, "HealthBar");
+            Hide(resources, "EnergyLimitCaption"); Hide(resources, "EnergyLimitValue");
+            Place(resources, 206, 16, 386, 64);
+            ui.StudyValue = Resource(resources, "Study", "ГОТОВНОСТЬ", "0 / 6", 2, Ink);
+            var track = Rect(resources, "EnergyBar");
+            Place(track, 140, 54, 106, 6);
+            ui.EnergyBar = ConfigureEnergyMeter(track);
 
-            var skipSleep = Rect(ui.DialogPanel.transform, "SkipSleep");
-            Place(skipSleep, 24, 376, 732, 40);
-            ui.SkipSleepButton = Component<UnityEngine.UI.Button>(skipSleep);
-            ButtonStyle(ui.SkipSleepButton, "Пропустить сон", false);
-            if (ui.SkipSleepButton.onClick.GetPersistentEventCount() == 0)
-                UnityEditor.Events.UnityEventTools.AddPersistentListener(ui.SkipSleepButton.onClick, ui.OnSkipSleep);
-            skipSleep.gameObject.SetActive(false);
+            var oldButton = ui.DialogPanel.transform.Find("SkipSleep");
+            if (oldButton != null) oldButton.name = "SleepOption";
+            var option = Rect(ui.DialogPanel.transform, "SleepOption");
+            Place(option, 24, 376, 732, 40);
+            ui.SleepOption = Component<UnityEngine.UI.Button>(option);
+            ButtonStyle(ui.SleepOption, "Спать до утра", false);
+            for (int i = ui.SleepOption.onClick.GetPersistentEventCount() - 1; i >= 0; i--)
+                UnityEditor.Events.UnityEventTools.RemovePersistentListener(ui.SleepOption.onClick, i);
+            UnityEditor.Events.UnityEventTools.AddPersistentListener(ui.SleepOption.onClick, ui.OnSleepOption);
+            option.gameObject.SetActive(false);
         }
-        private static UnityEngine.UI.Image Meter(RectTransform parent, string name, float x, string color)
+
+        internal static EnergyMeter ConfigureEnergyMeter(RectTransform track)
         {
-            var track = Rect(parent, name); Place(track, x, 55, 106, 3); Card(track, "665644");
-            var fill = Rect(track, "Fill"); Stretch(fill); var image = Component<UnityEngine.UI.Image>(fill);
-            image.sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/MezhduParami/Art/PrototypeSquare.png");
-            image.type = UnityEngine.UI.Image.Type.Filled; image.fillMethod = UnityEngine.UI.Image.FillMethod.Horizontal;
-            image.fillOrigin = 0; image.fillAmount = .8f; image.color = ColorOf(color); image.raycastTarget = false;
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/MezhduParami/Art/PrototypeSquare.png");
+            var background = Component<UnityEngine.UI.Image>(track);
+            background.type = UnityEngine.UI.Image.Type.Simple;
+            background.sprite = sprite;
+            background.color = ColorOf("665644");
+            background.raycastTarget = false;
+            var meter = Component<EnergyMeter>(track);
+            meter.Energy = MeterSegment(track, "Fill", sprite, Mint, UnityEngine.UI.Image.OriginHorizontal.Left);
+            meter.Fatigue = MeterSegment(track, "Fatigue", sprite, "A7A8AA", UnityEngine.UI.Image.OriginHorizontal.Right);
+            meter.Bonus = MeterSegment(track, "Bonus", sprite, "FFC573", UnityEngine.UI.Image.OriginHorizontal.Left);
+            meter.Bonus.type = UnityEngine.UI.Image.Type.Simple;
+            meter.Draw(80, 0);
+            return meter;
+        }
+
+        private static UnityEngine.UI.Image MeterSegment(RectTransform track, string name, Sprite sprite, string color,
+            UnityEngine.UI.Image.OriginHorizontal origin)
+        {
+            var rect = Rect(track, name);
+            Stretch(rect);
+            rect.SetAsLastSibling();
+            var image = Component<UnityEngine.UI.Image>(rect);
+            image.sprite = sprite;
+            image.type = UnityEngine.UI.Image.Type.Filled;
+            image.fillMethod = UnityEngine.UI.Image.FillMethod.Horizontal;
+            image.fillOrigin = (int)origin;
+            image.color = ColorOf(color);
+            image.raycastTarget = false;
             return image;
         }
 

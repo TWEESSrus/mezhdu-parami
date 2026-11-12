@@ -1,0 +1,6 @@
+"Scenario","Screenshot","Width","Height","ExitCode","TextOverflowOrException"
+"drink-item","01-drink-item.png","1024","576","0","False"
+"drink-active","02-drink-active.png","1280","720","0","False"
+"drink-spent","03-drink-spent.png","1280","720","0","False"
+"campus-bed","04-rest-limit.png","1280","720","0","False"
+"campus-morning","05-morning.png","1280","720","0","False"

@@ -40,7 +40,9 @@ namespace MezhduParami.Tests
 
         private void EndDay(PrototypeDay day)
         {
-            while (!day.IsComplete) Assert.That(day.TryPerform(rest, out _), Is.True);
+            var idle = Activity("idle", 0, 0);
+            while (!day.IsComplete)
+                Assert.That(day.TryPerform(day.RestsRemaining > 0 ? rest : idle, out _), Is.True);
         }
 
         private void ReachDeadline(PrototypeDay day)
@@ -48,51 +50,50 @@ namespace MezhduParami.Tests
             while (day.DayNumber < definition.DueDay)
             {
                 EndDay(day);
-                Assert.That(day.TryStartNextDay(true, out _), Is.True);
+                Assert.That(day.TrySleep(out _), Is.True);
             }
             while (day.Period < definition.DuePeriod) Assert.That(day.TryPerform(rest, out _), Is.True);
         }
 
-        [Test] public void NightChargesOnceAndPreservesProgressWhileResettingDailyWork()
+        [Test] public void EarlySleepRestoresEnergyAndPreservesProgressWhileResettingDailyWork()
         {
             var day = new PrototypeDay();
             var work = Activity("work", -15, 25, true);
             work.IntelligenceExperience = 1;
             day.TryPerform(work, out _);
-            EndDay(day);
-            Assert.That(day.TryStartNextDay(true, out _), Is.True);
-            Assert.That(day.TryStartNextDay(true, out _), Is.False);
+            Assert.That(day.TrySleep(out _), Is.True);
             Assert.That(day.DayNumber, Is.EqualTo(2));
-            Assert.That(day.Money, Is.EqualTo(137));
+            Assert.That(day.Period, Is.Zero);
+            Assert.That(day.Money, Is.EqualTo(145));
             Assert.That(day.Energy, Is.EqualTo(100));
             Assert.That(day.RecoveryLimit, Is.EqualTo(100));
             Assert.That(day.IntelligenceExperience, Is.EqualTo(1));
             Assert.That(day.TryPerform(work, out _), Is.True, "Daily shift limit resets next morning");
         }
 
-        [Test] public void UnaffordableFoodDoesNotMutateAndSkippingFoodIsAnExit()
+        [Test] public void TwoRestsAreAvailableAndSleepWorksEvenWithoutMoney()
         {
             var day = new PrototypeDay();
             day.TryPerform(Activity("spend", -80, -120), out _);
-            var idle = Activity("idle", 0, 0);
-            day.TryPerform(idle, out _);
-            day.TryPerform(idle, out _);
-            Assert.That(day.TryStartNextDay(true, out _), Is.False);
-            Assert.That(day.DayNumber, Is.EqualTo(1));
+            Assert.That(day.TrySleep(out _), Is.True);
+            Assert.That(day.TryPerform(rest, out _), Is.True);
+            Assert.That(day.TryPerform(rest, out _), Is.True);
+            Assert.That(day.TryPerform(rest, out _), Is.False);
+            Assert.That(day.Period, Is.EqualTo(2));
+            Assert.That(day.RestsRemaining, Is.Zero);
+            Assert.That(day.TrySleep(out _), Is.True);
             Assert.That(day.RecoveryLimit, Is.EqualTo(100));
-            Assert.That(day.TryStartNextDay(false, out _), Is.True);
-            Assert.That(day.RecoveryLimit, Is.EqualTo(100));
-            Assert.That(day.Energy, Is.EqualTo(30));
+            Assert.That(day.RestsRemaining, Is.EqualTo(2));
+            Assert.That(day.Energy, Is.EqualTo(100));
             Assert.That(day.Money, Is.Zero);
         }
 
-        [Test] public void FinalDayCannotAdvanceOrPayForAnotherNight()
+        [Test] public void FinalDayCannotAdvanceBeyondTheSlice()
         {
             var day = new PrototypeDay(1);
             EndDay(day);
             Assert.That(day.IsFinished, Is.True);
-            Assert.That(day.TryStartNextDay(true, out _), Is.False);
-            Assert.That(day.TryStartNextDay(false, out _), Is.False);
+            Assert.That(day.TrySleep(out _), Is.False);
             Assert.That(day.Money, Is.EqualTo(120));
             Assert.That(day.TrySkipSleep(out _), Is.False);
             Assert.That(day.RecoveryLimit, Is.EqualTo(100));
@@ -110,7 +111,7 @@ namespace MezhduParami.Tests
             Assert.That(day.TryPerform(rest, out _), Is.True);
             Assert.That(day.Energy, Is.EqualTo(75));
             EndDay(day);
-            Assert.That(day.TryStartNextDay(false, out _), Is.True);
+            Assert.That(day.TrySleep(out _), Is.True);
             Assert.That(day.RecoveryLimit, Is.EqualTo(100));
             Assert.That(day.Energy, Is.EqualTo(100));
             Assert.That(day.Money, Is.EqualTo(120));
@@ -181,7 +182,7 @@ namespace MezhduParami.Tests
             var promise = new SashaPromise(definition);
             promise.TryAccept(day, out _);
             ReachDeadline(day);
-            day.TryPerform(rest, out _);
+            Assert.That(day.TryPerform(Activity("study", -20, 0), out _), Is.True);
             promise.ResolveDeadline(day);
             promise.ResolveDeadline(day);
             Assert.That(promise.State, Is.EqualTo(PromiseState.Broken));
@@ -195,9 +196,9 @@ namespace MezhduParami.Tests
             var promise = new SashaPromise(definition);
             promise.TryAccept(day, out _);
             EndDay(day);
-            day.TryStartNextDay(true, out _);
+            day.TrySleep(out _);
             EndDay(day);
-            day.TryStartNextDay(true, out _);
+            day.TrySleep(out _);
             day.TryPerform(Activity("work", -15, 25, true), out _);
             day.TryPerform(rest, out _);
             Assert.That(promise.TryTakeShift(day, out _), Is.False);

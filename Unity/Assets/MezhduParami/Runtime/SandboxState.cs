@@ -4,17 +4,21 @@ namespace MezhduParami
 {
     public enum SandboxJob { Sorting, CopyCenter }
 
-    // A clock-free mechanics fixture. Campaign rules remain in PrototypeDay.
+    // The fixture counts mornings for rest allowances without spending periods.
     // All prices/effects are commands here, never button-side mutations.
     public sealed class SandboxState
     {
+        public const int EnergyDrinkPrice = 25;
         public int Money { get; private set; } = 120;
+        public int DayNumber { get; private set; } = 1;
         private readonly EnergyReserve energy = new EnergyReserve();
-        public int Energy => energy.Current;
+        public int Energy => energy.Total;
+        public int RegularEnergy => energy.Current;
+        public int BonusEnergy => energy.Bonus;
+        public int Fatigue => energy.Fatigue;
         public int RecoveryLimit => energy.Limit;
-        public string RecoveryStatus => energy.Status;
-        public bool CanRest => Energy < RecoveryLimit || (energy.NeedsRest && !energy.NeedsSleep);
-        public bool CanSleep => Energy < EnergyReserve.Full || energy.NeedsSleep || energy.NeedsRest;
+        public int RestsRemaining => energy.RestsRemaining;
+        public bool CanRest => RestsRemaining > 0;
         public int IntelligenceExperience { get; private set; }
         public int IntelligenceLevel => IntelligenceExperience >= 15 ? 3 : IntelligenceExperience >= 8 ? 2 : IntelligenceExperience >= 3 ? 1 : 0;
         public int Readiness { get; private set; }
@@ -24,6 +28,8 @@ namespace MezhduParami
         public int SnacksBought { get; private set; }
         public int SnacksUsed { get; private set; }
         public int SnackRecovery => energy.AvailableRecovery(20);
+        public bool HasEnergyDrink { get; private set; }
+        public int DrinkBonus => energy.AvailableDrinkEnergy;
         public int SortingCompleted { get; private set; }
         public int CopyCompleted { get; private set; }
         public WorkOrder ActiveOrder { get; private set; }
@@ -83,6 +89,29 @@ namespace MezhduParami
             reason = $"Перекус съеден. Энергия +{restored}.";
             return true;
         }
+        public bool BuyEnergyDrink(out string reason)
+        {
+            if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
+            if (HasEnergyDrink) return Fail("В рюкзаке уже есть энергетик.", out reason);
+            if (Money < EnergyDrinkPrice) return Fail($"На энергетик нужно {EnergyDrinkPrice}.", out reason);
+            Money -= EnergyDrinkPrice;
+            HasEnergyDrink = true;
+            reason = "Энергетик добавлен в рюкзак.";
+            return true;
+        }
+        public bool DrinkEnergyDrink(out string reason)
+        {
+            if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
+            if (!HasEnergyDrink) return Fail("В рюкзаке нет энергетика.", out reason);
+            if (DrinkBonus == 0) return Fail(BonusEnergy > 0
+                ? "Предыдущий энергетик ещё действует."
+                : "Энергия уже полная. Энергетик остался в рюкзаке.", out reason);
+            energy.Drink();
+            HasEnergyDrink = false;
+            reason = $"Временная энергия +{BonusEnergy}. Потрать её, пока она не исчезла.";
+            return true;
+        }
+        public bool TickEnergy(float seconds) => energy.Tick(seconds);
         public bool Study(out string reason)
         {
             if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
@@ -94,19 +123,18 @@ namespace MezhduParami
         public bool Rest(out string reason)
         {
             if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
-            if (!CanRest) return Fail("Отдых сейчас не прибавит энергии. При недосыпе поможет сон.", out reason);
+            if (!CanRest) return Fail("Оба отдыха на сегодня использованы. Можно лечь спать.", out reason);
             int before = Energy;
             energy.Rest(40);
-            reason = $"Отдых. Энергия +{Energy - before}. Предел восстановления {RecoveryLimit}.";
+            reason = $"Отдых. Энергия +{Energy - before}. Осталось отдыхов {RestsRemaining}/2.";
             return true;
         }
         public bool Sleep(out string reason)
         {
             if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
-            if (!CanSleep) return Fail("Силы уже восстановлены.", out reason);
-            int before = Energy;
-            energy.Sleep(50);
-            reason = $"После сна энергия +{Energy - before}. Предел снова {RecoveryLimit}.";
+            energy.Sleep();
+            DayNumber++;
+            reason = $"День {DayNumber}. Энергия восстановлена до 100.";
             return true;
         }
         public static int Pay(SandboxJob job) => job == SandboxJob.Sorting ? 25 : 45;
@@ -133,7 +161,7 @@ namespace MezhduParami
                 return Fail("Этот заказ уже закрыт.", out reason);
             if (bin != ActiveOrder.Target(ActiveOrder.Step)) return Fail("Эта посылка для другой полки. Попробуй ещё раз — штрафа нет.", out reason);
             ActiveOrder.Step++;
-            if (ActiveOrder.Step == 3) CompleteWork(SandboxJob.Sorting);
+            if (ActiveOrder.Step == 3 && !CompleteWork(SandboxJob.Sorting, out reason)) return false;
             reason = ActiveOrder == null ? "Три посылки разобраны. Деньги +25, энергия -15. Открыто быстрое выполнение." : "Верно! Следующая посылка.";
             return true;
         }
@@ -143,22 +171,25 @@ namespace MezhduParami
                 return Fail("Этот заказ уже закрыт.", out reason);
             if (format != ActiveOrder.Target(0) || copies != ActiveOrder.Target(1) || mode != ActiveOrder.Target(2))
                 return Fail("Параметры не совпали с заказом. Исправь настройки — штрафа нет.", out reason);
-            CompleteWork(SandboxJob.CopyCenter);
+            if (!CompleteWork(SandboxJob.CopyCenter, out reason)) return false;
             reason = "Заказ выдан. Деньги +45, энергия -20. Открыто быстрое выполнение."; return true;
         }
         public bool QuickWork(SandboxJob job, out string reason)
         {
             if (!IsMastered(job)) return Fail("Сначала выполни один заказ вручную.", out reason);
             if (!CanWork(job, out reason)) return false;
-            CompleteWork(job);
+            if (!CompleteWork(job, out reason)) return false;
             reason = $"Знакомая работа выполнена: деньги +{Pay(job)}, энергия -{Cost(job)}."; return true;
         }
-        private void CompleteWork(SandboxJob job)
+        private bool CompleteWork(SandboxJob job, out string reason)
         {
             // ActiveOrder is cleared in the same transaction as the reward.
             ActiveOrder = null;
+            if (Energy < Cost(job)) return Fail("Энергии не хватило для завершения. Заказ закрыт без оплаты и затрат.", out reason);
             Money += Pay(job); energy.Spend(Cost(job));
             if (job == SandboxJob.Sorting) SortingCompleted++; else CopyCompleted++;
+            reason = string.Empty;
+            return true;
         }
         private static bool Fail(string text, out string reason) { reason = text; return false; }
     }

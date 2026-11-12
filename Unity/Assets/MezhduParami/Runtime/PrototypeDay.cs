@@ -7,7 +7,6 @@ namespace MezhduParami
     public sealed class PrototypeDay
     {
         public const int PeriodsPerDay = 3;
-        public const int NormalFoodPrice = 8;
         private readonly EnergyReserve energy = new EnergyReserve();
         public int TotalDays { get; }
         public int DayNumber { get; private set; } = 1;
@@ -15,7 +14,8 @@ namespace MezhduParami
         public int Money { get; private set; } = 120;
         public int Energy => energy.Current;
         public int RecoveryLimit => energy.Limit;
-        public string RecoveryStatus => energy.Status;
+        public int Fatigue => energy.Fatigue;
+        public int RestsRemaining => energy.RestsRemaining;
         public int IntelligenceExperience { get; private set; }
         public int Readiness { get; private set; }
         public bool HasWorked { get; private set; }
@@ -38,6 +38,8 @@ namespace MezhduParami
                 reason = "Занятие не настроено.";
             else if (IsComplete)
                 reason = "Все три периода использованы.";
+            else if (activity.Id == "rest" && RestsRemaining == 0)
+                reason = "Оба отдыха на сегодня использованы. Можно лечь спать.";
             else if (activity.IsWork && HasWorked)
                 reason = "Сегодня уже была оплачиваемая смена.";
             else if (Money + activity.MoneyDelta < 0)
@@ -66,27 +68,38 @@ namespace MezhduParami
             return true;
         }
 
-        public bool TryStartNextDay(bool buyFood, out string reason) => AdvanceNight(true, buyFood, out reason);
-
-        public bool TrySkipSleep(out string reason) => AdvanceNight(false, false, out reason);
-
-        private bool AdvanceNight(bool sleep, bool buyFood, out string reason)
+        public bool TrySleep(out string reason)
         {
-            if (!IsComplete) reason = "Сначала используй три периода дня.";
-            else if (IsFinished) reason = "Тестовый сценарий завершён.";
-            else if (buyFood && Money < NormalFoodPrice) reason = "На обычную еду нужно 8. Можно поспать без еды.";
-            else
+            if (IsFinished)
             {
-                if (buyFood) Money -= NormalFoodPrice;
-                if (sleep) energy.Sleep(buyFood ? 50 : 30);
-                else energy.SkipSleep();
-                DayNumber++;
-                Period = 0;
-                HasWorked = false;
-                reason = string.Empty;
-                return true;
+                reason = "Тестовый сценарий завершён.";
+                return false;
             }
-            return false;
+            energy.Sleep();
+            if (DayNumber == TotalDays) Period = PeriodsPerDay;
+            else StartMorning();
+            reason = string.Empty;
+            return true;
+        }
+
+        public bool TrySkipSleep(out string reason)
+        {
+            if (!IsComplete || IsFinished)
+            {
+                reason = "Пропустить сон можно в конце дня.";
+                return false;
+            }
+            energy.SkipSleep();
+            StartMorning();
+            reason = string.Empty;
+            return true;
+        }
+
+        private void StartMorning()
+        {
+            DayNumber++;
+            Period = 0;
+            HasWorked = false;
         }
     }
 }

@@ -120,6 +120,31 @@ namespace MezhduParami.Tests
             Assert.That(inventory.SnackCount.text, Is.EqualTo("×1"));
             Assert.That(ui.Tasks.Caption.text, Does.Contain("5/5"));
         }
+        [UnityTest] public IEnumerator EnergyDrinkCanBeUsedFromTheBackpackAndDecaysWhileIdle()
+        {
+            yield return Open(SandboxStationKind.Shop);
+            yield return Choice(2);
+            Assert.That(ui.InputBlocked, Is.False);
+            ui.InventoryButton.onClick.Invoke();
+            yield return null;
+            var inventory = ui.InventoryView;
+            Assert.That(inventory.DrinkSlot.interactable, Is.True);
+            inventory.DrinkSlot.onClick.Invoke();
+            inventory.UseButton.onClick.Invoke();
+            inventory.UseButton.onClick.Invoke();
+            Assert.That(ui.State.HasEnergyDrink, Is.False);
+            Assert.That(ui.State.BonusEnergy, Is.EqualTo(20));
+            Assert.That(ui.EnergyBar.Bonus.enabled, Is.True);
+            Assert.That(ui.EnergyBar.Energy.fillOrigin, Is.EqualTo((int)UnityEngine.UI.Image.OriginHorizontal.Left));
+            Assert.That(ui.EnergyBar.Fatigue.fillOrigin, Is.EqualTo((int)UnityEngine.UI.Image.OriginHorizontal.Right));
+            Assert.That(ui.EnergyBar.Bonus.rectTransform.anchorMin.x, Is.EqualTo(.8f).Within(.001f));
+            yield return Close();
+            yield return new WaitForSecondsRealtime(1.1f);
+            Assert.That(ui.State.BonusEnergy, Is.LessThan(20));
+            Assert.That(ui.State.RegularEnergy, Is.EqualTo(80));
+            Assert.That(ui.State.Fatigue, Is.Zero);
+        }
+
         [UnityTest] public IEnumerator CancelAndQuickWorkRespectCostsAndInteractionPromptsClear()
         {
             var body = player.GetComponent<Rigidbody2D>();

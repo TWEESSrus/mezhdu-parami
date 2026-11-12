@@ -14,6 +14,7 @@ namespace MezhduParami
         public Button CloseButton, InventoryButton, HelpButton;
         public SandboxInventoryView InventoryView;
         public TaskTrackerPanel Tasks;
+        public EnergyMeter EnergyBar;
         public SandboxState State { get; private set; } = new SandboxState();
         public bool InputBlocked => Window != null && Window.activeSelf;
         private enum Screen { None, Shop, Inventory, Offer, Sort, Copy, Study, Rest, Help, Reset }
@@ -44,6 +45,12 @@ namespace MezhduParami
         }
         private void Update()
         {
+            if (screen != Screen.Help && screen != Screen.Reset && State.TickEnergy(Time.unscaledDeltaTime))
+            {
+                RefreshEnergy();
+                if (screen == Screen.Inventory) InventoryView.Refresh();
+                else if (screen == Screen.Offer || screen == Screen.Study) Render();
+            }
             var keyboard = Keyboard.current;
             if (keyboard == null) return;
             if (keyboard.escapeKey.wasPressedThisFrame) { if (InputBlocked) Close(); else OpenHelp(); }
@@ -82,7 +89,11 @@ namespace MezhduParami
             lastClick = Time.frameCount;
             switch (screen)
             {
-                case Screen.Shop: Execute(index == 0 ? State.BuyBook : State.BuySnack); break;
+                case Screen.Shop:
+                    if (index == 0) Execute(State.BuyBook);
+                    else if (index == 1) Execute(State.BuySnack);
+                    else Execute(State.BuyEnergyDrink);
+                    break;
                 case Screen.Study: Execute(State.Study); break;
                 case Screen.Rest: Execute(index == 0 ? State.Rest : State.Sleep); break;
                 case Screen.Offer:
@@ -145,9 +156,11 @@ namespace MezhduParami
             {
                 case Screen.Shop:
                     Title.text = "Лавка полезных вещей";
-                    Body.text = $"Деньги {State.Money}.\nУчебник даёт +3 опыта интеллекта при чтении за 15 энергии.\nПерекус восстанавливает до 20 энергии в пределах текущего лимита.";
+                    Body.text = $"Деньги {State.Money}.\nУчебник даёт +3 опыта интеллекта при чтении за 15 энергии.\nПерекус восстанавливает до 20 энергии. Энергетик даёт временный запас до 30.";
                     Option(0, State.BookOwned ? "Учебник уже куплен" : "Купить вводный учебник — 60", !State.BookOwned && State.Money >= 60);
                     Option(1, $"Купить перекус — 20 ({2 - State.SnacksBought} осталось)", State.SnacksBought < 2 && State.Money >= 20);
+                    Option(2, State.HasEnergyDrink ? "Энергетик уже в рюкзаке" : $"Купить энергетик — {SandboxState.EnergyDrinkPrice}",
+                        !State.HasEnergyDrink && State.Money >= SandboxState.EnergyDrinkPrice);
                     break;
                 case Screen.Inventory:
                     Title.text = "Рюкзак";
@@ -183,9 +196,9 @@ namespace MezhduParami
                     Option(0, "Позаниматься", State.Energy >= 20 && State.Readiness < 6); break;
                 case Screen.Rest:
                     Title.text = "Отдых и сон";
-                    Body.text = $"{State.RecoveryStatus}. Предел восстановления {State.RecoveryLimit} из 100.\n\nОтдых снимает усталость и возвращает до 40 энергии. Сон также снимает недосып и возвращает до 50 энергии.\nУсталость появляется после трёх затратных действий подряд, недосып — после шести без сна.";
+                    Body.text = $"Осталось отдыхов {State.RestsRemaining}/2. Серый участок шкалы — усталость.\n\nОтдых возвращает до 40 энергии и снимает обычную усталость. Сон переносит на утро, полностью восстанавливает энергию и обновляет оба отдыха.";
                     Option(0, "Отдохнуть", State.CanRest);
-                    Option(1, "Выспаться", State.CanSleep);
+                    Option(1, "Спать до утра");
                     break;
                 case Screen.Help:
                     Title.text = "Полигон механик";
@@ -199,13 +212,20 @@ namespace MezhduParami
         }
         public void Refresh()
         {
-            string limit = State.RecoveryLimit < 100 ? $"   •   {State.RecoveryStatus}, предел {State.RecoveryLimit}" : "";
-            Resources.text = $"Деньги {State.Money}   •   Энергия {State.Energy}/100{limit}\nИнтеллект {State.IntelligenceLevel} ({State.IntelligenceExperience} опыта)   •   Готовность {State.Readiness}/6";
+            RefreshEnergy();
             bool[] flags = { State.SortingCompleted > 0, State.BookOwned, State.BookRead, State.CopyCompleted > 0, State.SnacksUsed > 0 };
             string[] names = { "Разобрать три посылки", "Купить учебник", "Прочитать учебник", "Выполнить заказ копицентра", "Использовать перекус" };
             string text = ""; int completed = 0;
             for (int i = 0; i < flags.Length; i++) { if (flags[i]) completed++; text += (flags[i] ? "[x] " : "[ ] ") + names[i] + "\n\n"; }
             Tasks.SetEntries(text.TrimEnd(), completed, flags.Length);
+        }
+
+        private void RefreshEnergy()
+        {
+            string bonus = State.BonusEnergy > 0 ? $" (+{State.BonusEnergy} врем.)" : "";
+            Resources.text = $"День {State.DayNumber}   •   Деньги {State.Money}   •   Энергия {State.Energy}/100{bonus}   •   Отдых {State.RestsRemaining}/2\n"
+                + $"Интеллект {State.IntelligenceLevel} ({State.IntelligenceExperience} опыта)   •   Готовность {State.Readiness}/6";
+            if (EnergyBar != null) EnergyBar.Draw(State.RegularEnergy, State.Fatigue, State.BonusEnergy);
         }
     }
 }
