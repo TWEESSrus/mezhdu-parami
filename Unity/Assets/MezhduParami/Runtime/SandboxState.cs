@@ -9,6 +9,7 @@ namespace MezhduParami
     public sealed class SandboxState
     {
         public const int EnergyDrinkPrice = 25;
+        public const int EnergyDrinkFatigueThreshold = 60;
         public int Money { get; private set; } = 120;
         public int DayNumber { get; private set; } = 1;
         private readonly EnergyReserve energy = new EnergyReserve();
@@ -30,6 +31,16 @@ namespace MezhduParami
         public int SnackRecovery => energy.AvailableRecovery(20);
         public bool HasEnergyDrink { get; private set; }
         public int DrinkBonus => energy.AvailableDrinkEnergy;
+        public string DrinkBlockReason
+        {
+            get
+            {
+                if (BonusEnergy > 0) return "Предыдущий энергетик ещё действует.";
+                if (RegularEnergy == 0) return "При нулевой энергии нужен отдых или сон.";
+                if (Fatigue > EnergyDrinkFatigueThreshold) return $"Усталость выше {EnergyDrinkFatigueThreshold}. Поможет сон.";
+                return DrinkBonus == 0 ? "Энергия уже полная." : string.Empty;
+            }
+        }
         public int SortingCompleted { get; private set; }
         public int CopyCompleted { get; private set; }
         public WorkOrder ActiveOrder { get; private set; }
@@ -103,9 +114,8 @@ namespace MezhduParami
         {
             if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
             if (!HasEnergyDrink) return Fail("В рюкзаке нет энергетика.", out reason);
-            if (DrinkBonus == 0) return Fail(BonusEnergy > 0
-                ? "Предыдущий энергетик ещё действует."
-                : "Энергия уже полная. Энергетик остался в рюкзаке.", out reason);
+            string blocked = DrinkBlockReason;
+            if (blocked.Length > 0) return Fail(blocked, out reason);
             energy.Drink();
             HasEnergyDrink = false;
             reason = $"Временная энергия +{BonusEnergy}. Потрать её, пока она не исчезла.";

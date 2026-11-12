@@ -111,6 +111,13 @@ namespace MezhduParami
                     sandbox.Choices[0].onClick.Invoke();
                 }
                 else if (scenario == "inventory-empty") sandbox.OpenInventory();
+                else if (scenario == "drink-blocked")
+                {
+                    for (int i = 0; i < 4; i++) sandbox.State.Study(out _);
+                    sandbox.State.BuyEnergyDrink(out _);
+                    sandbox.Refresh();
+                    sandbox.OpenInventory();
+                }
                 else if (scenario == "inventory" || scenario == "inventory-snack" || scenario == "inventory-after-use")
                 {
                     sandbox.State.BuyBook(out _);
@@ -142,7 +149,7 @@ namespace MezhduParami
                         sandbox.Choices[1].onClick.Invoke();
                     }
                 }
-                else if (scenario == "drink-item" || scenario == "drink-active" || scenario == "drink-spent")
+                else if (scenario == "drink-item" || scenario == "drink-active" || scenario == "drink-spent" || scenario == "drink-expired")
                 {
                     for (int i = 0; i < 3; i++) sandbox.State.Study(out _);
                     for (int i = 0; i < 2; i++)
@@ -156,10 +163,11 @@ namespace MezhduParami
                     else
                     {
                         sandbox.State.DrinkEnergyDrink(out _);
-                        sandbox.State.TickEnergy(3f);
+                        sandbox.State.TickEnergy(scenario == "drink-expired" ? sandbox.State.BonusEnergy - 1 : 3f);
                         if (scenario == "drink-spent") sandbox.State.Study(out _);
                     }
                     sandbox.Refresh();
+                    if (scenario == "drink-expired") yield return new WaitForSecondsRealtime(1.15f);
                 }
                 else if (scenario == "sorting" || scenario == "copy")
                 {

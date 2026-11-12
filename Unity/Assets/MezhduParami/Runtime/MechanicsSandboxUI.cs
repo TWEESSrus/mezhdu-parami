@@ -47,6 +47,7 @@ namespace MezhduParami
         {
             if (screen != Screen.Help && screen != Screen.Reset && State.TickEnergy(Time.unscaledDeltaTime))
             {
+                if (State.BonusEnergy == 0) Notify("Действие энергетика закончилось. Наступил спад.");
                 RefreshEnergy();
                 if (screen == Screen.Inventory) InventoryView.Refresh();
                 else if (screen == Screen.Offer || screen == Screen.Study) Render();

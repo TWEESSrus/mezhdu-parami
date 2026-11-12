@@ -100,12 +100,12 @@ namespace MezhduParami
                     PreviewIcon.sprite = DrinkIcon.sprite;
                     Category.text = "РАСХОДНИК";
                     ItemName.text = "Энергетик";
-                    Description.text = "До 30 временной энергии. Каждую секунду исчезает 1. Трата на действия усиливает усталость.";
-                    Effect.text = state.BonusEnergy > 0 ? "Предыдущий энергетик ещё действует."
-                        : state.DrinkBonus == 0 ? "Энергия уже полная."
+                    Description.text = $"До {EnergyReserve.DrinkEnergy} временной энергии. Убывает на 1 в секунду. После эффекта -{EnergyReserve.DrinkCrashEnergy} энергии и +{EnergyReserve.DrinkCrashFatigue} усталости.";
+                    string blocked = state.DrinkBlockReason;
+                    Effect.text = blocked.Length > 0 ? blocked
                         : $"Энергия {state.Energy} → {state.Energy + state.DrinkBonus}\nВременный запас +{state.DrinkBonus}";
                     UseLabel.text = "Выпить";
-                    UseButton.interactable = state.DrinkBonus > 0;
+                    UseButton.interactable = blocked.Length == 0;
                     break;
                 default:
                     Category.text = "";

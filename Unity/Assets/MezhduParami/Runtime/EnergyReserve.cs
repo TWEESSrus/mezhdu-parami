@@ -7,8 +7,10 @@ namespace MezhduParami
         public const int Full = 100;
         public const int MaximumRests = 2;
         public const int DrinkEnergy = 30;
+        public const int DrinkCrashEnergy = 5;
+        public const int DrinkCrashFatigue = 5;
         private const int FatigueFromRoutine = 25;
-        private const int MaximumFatigue = 60;
+        private const int MaximumFatigue = 70;
         private const int ActionsBeforeRest = 3;
         private const int ActionsBeforeSleep = 6;
 
@@ -30,9 +32,8 @@ namespace MezhduParami
         {
             if (amount <= 0) return;
             int usedBonus = Math.Min(Bonus, amount);
-            Bonus -= usedBonus;
             Current -= amount - usedBonus;
-            drinkFatigue = Math.Min(MaximumFatigue, drinkFatigue + usedBonus);
+            ConsumeBonus(usedBonus);
             actionsSinceRest = Math.Min(ActionsBeforeRest, actionsSinceRest + 1);
             actionsSinceSleep = Math.Min(ActionsBeforeSleep, actionsSinceSleep + 1);
         }
@@ -61,7 +62,7 @@ namespace MezhduParami
         public void SkipSleep()
         {
             actionsSinceSleep = ActionsBeforeSleep;
-            Bonus = 0;
+            ConsumeBonus(Bonus);
             RestsRemaining = MaximumRests;
         }
 
@@ -76,9 +77,19 @@ namespace MezhduParami
             if (Bonus == 0 || seconds <= 0) return false;
             decayTime += seconds;
             int lost = Math.Min(Bonus, (int)decayTime);
-            Bonus -= lost;
             decayTime -= lost;
+            ConsumeBonus(lost);
             return lost > 0;
+        }
+
+        private void ConsumeBonus(int amount)
+        {
+            if (amount == 0) return;
+            Bonus -= amount;
+            if (Bonus != 0) return;
+
+            Current = Math.Max(0, Current - DrinkCrashEnergy);
+            drinkFatigue = Math.Min(MaximumFatigue, drinkFatigue + DrinkCrashFatigue);
         }
     }
 }

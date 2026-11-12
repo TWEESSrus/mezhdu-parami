@@ -127,7 +127,7 @@ namespace MezhduParami.Tests
             Assert.That(state.DayNumber, Is.EqualTo(2));
         }
 
-        [Test] public void EnergyDrinkCrossesTheLimitDecaysAndSpendingItAddsFatigue()
+        [Test] public void EnergyDrinkCrossesTheLimitAndCrashesOnceAfterDecay()
         {
             var state = new SandboxState();
             for (int i = 0; i < 3; i++) Assert.That(state.Study(out _), Is.True);
@@ -151,18 +151,93 @@ namespace MezhduParami.Tests
             Assert.That(state.Study(out _), Is.True);
             Assert.That(state.RegularEnergy, Is.EqualTo(60));
             Assert.That(state.BonusEnergy, Is.EqualTo(9));
-            Assert.That(state.Fatigue, Is.EqualTo(45));
+            Assert.That(state.Fatigue, Is.EqualTo(25));
             Assert.That(state.TickEnergy(9f), Is.True);
             Assert.That(state.BonusEnergy, Is.Zero);
+            Assert.That(state.RegularEnergy, Is.EqualTo(55));
+            Assert.That(state.Fatigue, Is.EqualTo(30));
+            Assert.That(state.TickEnergy(30f), Is.False);
+            Assert.That(state.RegularEnergy, Is.EqualTo(55));
+            Assert.That(state.Fatigue, Is.EqualTo(30));
             Assert.That(state.Sleep(out _), Is.True);
             Assert.That(state.Fatigue, Is.Zero);
             Assert.That(state.Energy, Is.EqualTo(100));
         }
 
-        [Test] public void ExpiredBonusCannotPayForAnOpenOrder()
+        [Test] public void SpendingTheLastBonusEnergyTriggersTheSameCrash()
+        {
+            var state = new SandboxState();
+            Assert.That(state.BuyEnergyDrink(out _), Is.True);
+            Assert.That(state.DrinkEnergyDrink(out _), Is.True);
+            Assert.That(state.Fatigue, Is.Zero);
+            Assert.That(state.Study(out _), Is.True);
+            Assert.That(state.BonusEnergy, Is.Zero);
+            Assert.That(state.RegularEnergy, Is.EqualTo(75));
+            Assert.That(state.Fatigue, Is.EqualTo(13), "8 from study plus 5 from the crash");
+            Assert.That(state.TickEnergy(1f), Is.False);
+            Assert.That(state.RegularEnergy, Is.EqualTo(75));
+        }
+
+        [Test] public void EnergyDrinkIsKeptWhenRegularEnergyIsZero()
         {
             var state = new SandboxState();
             for (int i = 0; i < 4; i++) Assert.That(state.Study(out _), Is.True);
+            Assert.That(state.BuyEnergyDrink(out _), Is.True);
+            Assert.That(state.DrinkEnergyDrink(out var reason), Is.False);
+            Assert.That(reason, Does.Contain("нулевой"));
+            Assert.That(state.HasEnergyDrink, Is.True);
+            Assert.That(state.Energy, Is.Zero);
+        }
+
+        [Test] public void EnergyDrinkIsAvailableAtSixtyFatigueAndTotalFatigueIsCappedAtSeventy()
+        {
+            var state = new SandboxState();
+            Assert.That(state.BeginWork(SandboxJob.Sorting, 7, out _), Is.True);
+            var order = state.ActiveOrder;
+            for (int i = 0; i < 3; i++) Assert.That(state.Sort(order.Id, order.Target(i), out _), Is.True);
+            for (int day = 0; day < 2; day++)
+            {
+                for (int i = 0; i < 4; i++) Assert.That(state.QuickWork(SandboxJob.Sorting, out _), Is.True);
+                Assert.That(state.Sleep(out _), Is.True);
+            }
+            for (int i = 0; i < 3; i++) Assert.That(state.QuickWork(SandboxJob.Sorting, out _), Is.True);
+            for (int i = 0; i < 7; i++)
+            {
+                Assert.That(state.BuyEnergyDrink(out _), Is.True);
+                Assert.That(state.DrinkEnergyDrink(out _), Is.True);
+                Assert.That(state.TickEnergy(30f), Is.True);
+            }
+
+            Assert.That(state.Fatigue, Is.EqualTo(60));
+            Assert.That(state.BuyEnergyDrink(out _), Is.True);
+            Assert.That(state.DrinkEnergyDrink(out _), Is.True);
+            Assert.That(state.TickEnergy(30f), Is.True);
+            Assert.That(state.Fatigue, Is.EqualTo(65));
+            Assert.That(state.Energy, Is.GreaterThan(0));
+            Assert.That(state.BuyEnergyDrink(out _), Is.True);
+            Assert.That(state.DrinkEnergyDrink(out var reason), Is.False);
+            Assert.That(reason, Does.Contain("выше 60"));
+            Assert.That(state.HasEnergyDrink, Is.True);
+
+            Assert.That(state.Rest(out _), Is.True);
+            for (int i = 0; i < 5; i++)
+            {
+                if (!state.HasEnergyDrink) Assert.That(state.BuyEnergyDrink(out _), Is.True);
+                Assert.That(state.DrinkEnergyDrink(out _), Is.True);
+                Assert.That(state.TickEnergy(30f), Is.True);
+            }
+            Assert.That(state.Fatigue, Is.EqualTo(65));
+            Assert.That(state.QuickWork(SandboxJob.Sorting, out _), Is.True);
+            Assert.That(state.Fatigue, Is.EqualTo(70));
+        }
+
+        [Test] public void ExpiredBonusCannotPayForAnOpenOrder()
+        {
+            var state = new SandboxState();
+            for (int i = 0; i < 3; i++) Assert.That(state.Study(out _), Is.True);
+            Assert.That(state.BuyBook(out _), Is.True);
+            Assert.That(state.ReadBook(out _), Is.True);
+            Assert.That(state.Energy, Is.EqualTo(5));
             Assert.That(state.BuyEnergyDrink(out _), Is.True);
             Assert.That(state.DrinkEnergyDrink(out _), Is.True);
             Assert.That(state.BeginWork(SandboxJob.Sorting, 7, out _), Is.True);
@@ -172,8 +247,9 @@ namespace MezhduParami.Tests
             Assert.That(state.Sort(order.Id, order.Target(1), out _), Is.True);
             Assert.That(state.Sort(order.Id, order.Target(2), out _), Is.False);
             Assert.That(state.ActiveOrder, Is.Null);
-            Assert.That(state.Money, Is.EqualTo(95));
+            Assert.That(state.Money, Is.EqualTo(35));
             Assert.That(state.Energy, Is.Zero);
+            Assert.That(state.Fatigue, Is.EqualTo(30));
             Assert.That(state.SortingCompleted, Is.Zero);
         }
     }

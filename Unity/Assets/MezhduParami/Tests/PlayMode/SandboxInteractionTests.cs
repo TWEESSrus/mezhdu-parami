@@ -143,6 +143,14 @@ namespace MezhduParami.Tests
             Assert.That(ui.State.BonusEnergy, Is.LessThan(20));
             Assert.That(ui.State.RegularEnergy, Is.EqualTo(80));
             Assert.That(ui.State.Fatigue, Is.Zero);
+            Assert.That(ui.State.TickEnergy(ui.State.BonusEnergy - 1), Is.True);
+            yield return new WaitForSecondsRealtime(1.1f);
+            Assert.That(ui.State.BonusEnergy, Is.Zero);
+            Assert.That(ui.State.RegularEnergy, Is.EqualTo(75));
+            Assert.That(ui.State.Fatigue, Is.EqualTo(5));
+            Assert.That(ui.EnergyBar.Bonus.enabled, Is.False);
+            Assert.That(ui.EnergyBar.Fatigue.fillAmount, Is.EqualTo(.05f).Within(.001f));
+            Assert.That(ui.Toast.text, Does.Contain("Наступил спад"));
         }
 
         [UnityTest] public IEnumerator CancelAndQuickWorkRespectCostsAndInteractionPromptsClear()
