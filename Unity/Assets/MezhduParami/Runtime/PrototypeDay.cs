@@ -8,12 +8,14 @@ namespace MezhduParami
     {
         public const int PeriodsPerDay = 3;
         public const int NormalFoodPrice = 8;
+        private readonly EnergyReserve energy = new EnergyReserve();
         public int TotalDays { get; }
         public int DayNumber { get; private set; } = 1;
         public int Period { get; private set; }
         public int Money { get; private set; } = 120;
-        public int Energy { get; private set; } = 80;
-        public int Health { get; private set; } = 80;
+        public int Energy => energy.Current;
+        public int RecoveryLimit => energy.Limit;
+        public string RecoveryStatus => energy.Status;
         public int IntelligenceExperience { get; private set; }
         public int Readiness { get; private set; }
         public bool HasWorked { get; private set; }
@@ -54,7 +56,9 @@ namespace MezhduParami
         {
             if (!CanPerform(activity, out reason)) return false;
             Money += activity.MoneyDelta;
-            Energy = Mathf.Clamp(Energy + activity.EnergyDelta, 0, 100);
+            if (activity.EnergyDelta < 0) energy.Spend(-activity.EnergyDelta);
+            else if (activity.Id == "rest") energy.Rest(activity.EnergyDelta);
+            else energy.Recover(activity.EnergyDelta);
             IntelligenceExperience += Mathf.Max(0, activity.IntelligenceExperience);
             Readiness = Mathf.Clamp(Readiness + activity.ReadinessDelta, 0, 6);
             if (activity.IsWork) HasWorked = true;
@@ -62,17 +66,20 @@ namespace MezhduParami
             return true;
         }
 
-        public bool TryStartNextDay(bool buyFood, out string reason)
+        public bool TryStartNextDay(bool buyFood, out string reason) => AdvanceNight(true, buyFood, out reason);
+
+        public bool TrySkipSleep(out string reason) => AdvanceNight(false, false, out reason);
+
+        private bool AdvanceNight(bool sleep, bool buyFood, out string reason)
         {
             if (!IsComplete) reason = "Сначала используй три периода дня.";
             else if (IsFinished) reason = "Тестовый сценарий завершён.";
-            else if (buyFood && Money < NormalFoodPrice) reason = "На обычную еду нужно 8. Можно пропустить питание с потерей здоровья.";
+            else if (buyFood && Money < NormalFoodPrice) reason = "На обычную еду нужно 8. Можно поспать без еды.";
             else
             {
                 if (buyFood) Money -= NormalFoodPrice;
-                else Health = Mathf.Max(0, Health - 8);
-                int recovery = buyFood ? (Health < 40 ? 35 : 50) : 30;
-                Energy = Mathf.Min(100, Energy + recovery);
+                if (sleep) energy.Sleep(buyFood ? 50 : 30);
+                else energy.SkipSleep();
                 DayNumber++;
                 Period = 0;
                 HasWorked = false;

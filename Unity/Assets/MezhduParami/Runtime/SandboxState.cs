@@ -9,16 +9,21 @@ namespace MezhduParami
     public sealed class SandboxState
     {
         public int Money { get; private set; } = 120;
-        public int Energy { get; private set; } = 80;
-        public int Health { get; private set; } = 80;
+        private readonly EnergyReserve energy = new EnergyReserve();
+        public int Energy => energy.Current;
+        public int RecoveryLimit => energy.Limit;
+        public string RecoveryStatus => energy.Status;
+        public bool CanRest => Energy < RecoveryLimit || (energy.NeedsRest && !energy.NeedsSleep);
+        public bool CanSleep => Energy < EnergyReserve.Full || energy.NeedsSleep || energy.NeedsRest;
         public int IntelligenceExperience { get; private set; }
         public int IntelligenceLevel => IntelligenceExperience >= 15 ? 3 : IntelligenceExperience >= 8 ? 2 : IntelligenceExperience >= 3 ? 1 : 0;
         public int Readiness { get; private set; }
         public bool BookOwned { get; private set; }
         public bool BookRead { get; private set; }
-        public int Kits { get; private set; }
-        public int KitsBought { get; private set; }
-        public int KitsUsed { get; private set; }
+        public int Snacks { get; private set; }
+        public int SnacksBought { get; private set; }
+        public int SnacksUsed { get; private set; }
+        public int SnackRecovery => energy.AvailableRecovery(20);
         public int SortingCompleted { get; private set; }
         public int CopyCompleted { get; private set; }
         public WorkOrder ActiveOrder { get; private set; }
@@ -45,45 +50,64 @@ namespace MezhduParami
             if (BookOwned) return Fail("Учебник уже куплен. Повторный опыт за него не выдаётся.", out reason);
             if (Money < 60) return Fail("Для учебника нужно 60.", out reason);
             Money -= 60; BookOwned = true;
-            reason = "Учебник куплен. Прочитай его в вещах [I]: энергия -15, опыт интеллекта +3 один раз."; return true;
+            reason = "Учебник добавлен в рюкзак."; return true;
         }
         public bool ReadBook(out string reason)
         {
             if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
             if (!BookOwned || BookRead) return Fail(BookRead ? "Этот учебник уже прочитан." : "Сначала купи учебник.", out reason);
             if (Energy < 15) return Fail("Для чтения нужно 15 энергии.", out reason);
-            BookRead = true; Energy -= 15; IntelligenceExperience += 3;
+            BookRead = true; energy.Spend(15); IntelligenceExperience += 3;
             reason = "Учебник прочитан: опыт интеллекта +3. Доступна работа в копицентре."; return true;
         }
-        public bool BuyKit(out string reason)
+        public bool BuySnack(out string reason)
         {
             if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
-            if (KitsBought >= 2) return Fail("Оба набора из тестового запаса уже куплены.", out reason);
-            if (Money < 20) return Fail("Для набора восстановления нужно 20.", out reason);
-            Money -= 20; Kits++; KitsBought++;
-            reason = "Набор куплен. Примени его в вещах [I]: здоровье +20, до 100."; return true;
+            if (SnacksBought >= 2) return Fail("Оба перекуса уже куплены.", out reason);
+            if (Money < 20) return Fail("На перекус нужно 20.", out reason);
+            Money -= 20;
+            Snacks++;
+            SnacksBought++;
+            reason = "Перекус куплен. Он восстанавливает до 20 энергии.";
+            return true;
         }
-        public bool UseKit(out string reason)
+        public bool EatSnack(out string reason)
         {
             if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
-            if (Kits <= 0 || Health >= 100) return Fail(Kits <= 0 ? "Нет набора восстановления." : "Здоровье уже полное. Набор сохранён.", out reason);
-            Kits--; KitsUsed++; Health = Math.Min(100, Health + 20);
-            reason = "Набор применён: здоровье +20, до 100."; return true;
+            if (Snacks <= 0) return Fail("В рюкзаке нет перекуса.", out reason);
+            int restored = SnackRecovery;
+            if (restored == 0) return Fail("Достигнут предел восстановления. Перекус остался в рюкзаке.", out reason);
+            Snacks--;
+            SnacksUsed++;
+            energy.Recover(restored);
+            reason = $"Перекус съеден. Энергия +{restored}.";
+            return true;
         }
         public bool Study(out string reason)
         {
             if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
             if (Readiness >= 6) return Fail("Готовность уже 6/6. Для этой проверки достаточно.", out reason);
             if (Energy < 20) return Fail("Для учёбы нужно 20 энергии.", out reason);
-            Energy -= 20; IntelligenceExperience++; Readiness++;
+            energy.Spend(20); IntelligenceExperience++; Readiness++;
             reason = "Учёба завершена: опыт интеллекта +1, готовность +1."; return true;
         }
         public bool Rest(out string reason)
         {
             if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
-            if (Energy >= 100) return Fail("Силы уже восстановлены.", out reason);
-            Energy = Math.Min(100, Energy + 40);
-            reason = "Отдых: энергия +40, до 100. В полигоне нет календаря."; return true;
+            if (!CanRest) return Fail("Отдых сейчас не прибавит энергии. При недосыпе поможет сон.", out reason);
+            int before = Energy;
+            energy.Rest(40);
+            reason = $"Отдых. Энергия +{Energy - before}. Предел восстановления {RecoveryLimit}.";
+            return true;
+        }
+        public bool Sleep(out string reason)
+        {
+            if (ActiveOrder != null) return Fail("Сначала закончи или отмени заказ.", out reason);
+            if (!CanSleep) return Fail("Силы уже восстановлены.", out reason);
+            int before = Energy;
+            energy.Sleep(50);
+            reason = $"После сна энергия +{Energy - before}. Предел снова {RecoveryLimit}.";
+            return true;
         }
         public static int Pay(SandboxJob job) => job == SandboxJob.Sorting ? 25 : 45;
         public static int Cost(SandboxJob job) => job == SandboxJob.Sorting ? 15 : 20;
@@ -133,7 +157,7 @@ namespace MezhduParami
         {
             // ActiveOrder is cleared in the same transaction as the reward.
             ActiveOrder = null;
-            Money += Pay(job); Energy -= Cost(job);
+            Money += Pay(job); energy.Spend(Cost(job));
             if (job == SandboxJob.Sorting) SortingCompleted++; else CopyCompleted++;
         }
         private static bool Fail(string text, out string reason) { reason = text; return false; }

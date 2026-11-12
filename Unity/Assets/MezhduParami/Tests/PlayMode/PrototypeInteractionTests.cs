@@ -252,7 +252,7 @@ namespace MezhduParami.Tests
 
         [UnityTest] public IEnumerator TakingShiftShowsWarningAndBrokenPromiseEnding() => RunPromiseRoute(false);
 
-        [UnityTest] public IEnumerator SecondaryButtonDeclinesFreelyAndCanSkipFoodAtNight()
+        [UnityTest] public IEnumerator DecliningIsFreeAndSkippingSleepAppliesTheRecoveryLimit()
         {
             ui.OpenInteraction(GameObject.Find("Sasha").GetComponent<WorldInteraction>());
             ui.CancelButton.onClick.Invoke();
@@ -265,8 +265,16 @@ namespace MezhduParami.Tests
             ui.CancelButton.onClick.Invoke();
             Assert.That(ui.Day.DayNumber, Is.EqualTo(2));
             Assert.That(ui.Day.Money, Is.EqualTo(120));
-            Assert.That(ui.Day.Health, Is.EqualTo(72));
+            Assert.That(ui.Day.RecoveryLimit, Is.EqualTo(100));
             Assert.That(ui.Promise.Trust, Is.Zero);
+            for (int i = 0; i < 3; i++) yield return Confirm("Bed");
+            Assert.That(ui.SkipSleepButton.gameObject.activeInHierarchy, Is.True);
+            ui.SkipSleepButton.onClick.Invoke();
+            ui.SkipSleepButton.onClick.Invoke();
+            Assert.That(ui.Day.DayNumber, Is.EqualTo(3));
+            Assert.That(ui.Day.RecoveryLimit, Is.EqualTo(75));
+            Assert.That(ui.EnergyLimitValue.text, Is.EqualTo("75"));
+            Assert.That(ui.EnergyLimitCaption.text, Does.Contain("НЕДОСЫП"));
         }
 
         private IEnumerator RunPromiseRoute(bool help)

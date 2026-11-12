@@ -1,0 +1,7 @@
+"Scenario","Screenshot","Width","Height","ExitCode","TextOverflowOrException"
+"fatigue","02-fatigue.png","1280","720","0","False"
+"rested","03-rested.png","1280","720","0","False"
+"purchase","04-purchase.png","1280","720","0","False"
+"inventory-snack","05-snack.png","1024","576","0","False"
+"campus-night","06-night.png","1280","720","0","False"
+"campus-sleepless","07-sleepless.png","1280","720","0","False"

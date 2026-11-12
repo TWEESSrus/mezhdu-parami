@@ -18,17 +18,27 @@ namespace MezhduParami.Tests
             Assert.That(state.IntelligenceLevel, Is.EqualTo(1));
             Assert.That(state.Energy, Is.EqualTo(65));
         }
-        [Test] public void KitIsNotConsumedAtFullHealthAndOnlyTwoCanBeBought()
+        [Test] public void SnackRespectsRecoveryLimitAndIsKeptAtTheLimit()
         {
             var state = new SandboxState();
-            state.BuyKit(out _); state.BuyKit(out _);
-            Assert.That(state.BuyKit(out _), Is.False);
-            Assert.That(state.Money, Is.EqualTo(80));
-            Assert.That(state.UseKit(out _), Is.True);
-            Assert.That(state.Health, Is.EqualTo(100));
-            Assert.That(state.UseKit(out _), Is.False);
-            Assert.That(state.Kits, Is.EqualTo(1));
-            Assert.That(state.KitsUsed, Is.EqualTo(1));
+            Assert.That(state.Sleep(out _), Is.True);
+            Assert.That(state.BuyBook(out _), Is.True);
+            Assert.That(state.ReadBook(out _), Is.True);
+            Assert.That(state.BeginWork(SandboxJob.Sorting, 10, out _), Is.True);
+            var order = state.ActiveOrder;
+            for (int i = 0; i < 3; i++) state.Sort(order.Id, order.Target(i), out _);
+            Assert.That(state.QuickWork(SandboxJob.Sorting, out _), Is.True);
+            Assert.That(state.RecoveryLimit, Is.EqualTo(75));
+            Assert.That(state.BuySnack(out _), Is.True);
+            Assert.That(state.BuySnack(out _), Is.True);
+            Assert.That(state.BuySnack(out _), Is.False);
+            Assert.That(state.EatSnack(out _), Is.True);
+            Assert.That(state.Energy, Is.EqualTo(75));
+            Assert.That(state.EatSnack(out _), Is.False);
+            Assert.That(state.Snacks, Is.EqualTo(1));
+            Assert.That(state.SnacksUsed, Is.EqualTo(1));
+            Assert.That(state.Rest(out _), Is.True);
+            Assert.That(state.RecoveryLimit, Is.EqualTo(100));
         }
         [Test] public void ReadingAndWorkCannotSpendMissingEnergy()
         {
@@ -97,13 +107,24 @@ namespace MezhduParami.Tests
             Assert.That(state.BuyBook(out _), Is.False);
             Assert.That(state.Rest(out _), Is.False);
         }
-        [Test] public void RestAndStudyHaveCapsAndDoNotRequireCalendar()
+        [Test] public void RepeatedActionsWithoutSleepLimitRestUntilThePlayerSleeps()
         {
             var state = new SandboxState();
-            for (int i = 0; i < 6; i++) { state.Rest(out _); Assert.That(state.Study(out _), Is.True); }
+            for (int i = 0; i < 6; i++)
+            {
+                if (i == 3) Assert.That(state.Rest(out _), Is.True);
+                Assert.That(state.Study(out _), Is.True);
+            }
             Assert.That(state.Study(out _), Is.False);
-            state.Rest(out _); Assert.That(state.Rest(out _), Is.False);
+            Assert.That(state.Rest(out _), Is.True);
+            Assert.That(state.Rest(out _), Is.True);
+            Assert.That(state.Rest(out _), Is.False);
+            Assert.That(state.Energy, Is.EqualTo(75));
+            Assert.That(state.RecoveryLimit, Is.EqualTo(75));
+            Assert.That(state.RecoveryStatus, Is.EqualTo("Недосып"));
+            Assert.That(state.Sleep(out _), Is.True);
             Assert.That(state.Energy, Is.EqualTo(100)); Assert.That(state.Readiness, Is.EqualTo(6));
+            Assert.That(state.RecoveryLimit, Is.EqualTo(100));
         }
     }
 }

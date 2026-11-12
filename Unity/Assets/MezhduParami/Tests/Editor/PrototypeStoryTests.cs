@@ -65,7 +65,7 @@ namespace MezhduParami.Tests
             Assert.That(day.DayNumber, Is.EqualTo(2));
             Assert.That(day.Money, Is.EqualTo(137));
             Assert.That(day.Energy, Is.EqualTo(100));
-            Assert.That(day.Health, Is.EqualTo(80));
+            Assert.That(day.RecoveryLimit, Is.EqualTo(100));
             Assert.That(day.IntelligenceExperience, Is.EqualTo(1));
             Assert.That(day.TryPerform(work, out _), Is.True, "Daily shift limit resets next morning");
         }
@@ -79,9 +79,9 @@ namespace MezhduParami.Tests
             day.TryPerform(idle, out _);
             Assert.That(day.TryStartNextDay(true, out _), Is.False);
             Assert.That(day.DayNumber, Is.EqualTo(1));
-            Assert.That(day.Health, Is.EqualTo(80));
+            Assert.That(day.RecoveryLimit, Is.EqualTo(100));
             Assert.That(day.TryStartNextDay(false, out _), Is.True);
-            Assert.That(day.Health, Is.EqualTo(72));
+            Assert.That(day.RecoveryLimit, Is.EqualTo(100));
             Assert.That(day.Energy, Is.EqualTo(30));
             Assert.That(day.Money, Is.Zero);
         }
@@ -94,7 +94,26 @@ namespace MezhduParami.Tests
             Assert.That(day.TryStartNextDay(true, out _), Is.False);
             Assert.That(day.TryStartNextDay(false, out _), Is.False);
             Assert.That(day.Money, Is.EqualTo(120));
-            Assert.That(day.Health, Is.EqualTo(80));
+            Assert.That(day.TrySkipSleep(out _), Is.False);
+            Assert.That(day.RecoveryLimit, Is.EqualTo(100));
+        }
+
+        [Test] public void SkippingSleepKeepsCurrentEnergyButCapsRecoveryUntilTheNextSleep()
+        {
+            var day = new PrototypeDay();
+            EndDay(day);
+            Assert.That(day.TrySkipSleep(out _), Is.True);
+            Assert.That(day.Energy, Is.EqualTo(100));
+            Assert.That(day.RecoveryLimit, Is.EqualTo(75));
+            Assert.That(day.TrySkipSleep(out _), Is.False);
+            Assert.That(day.TryPerform(Activity("study", -40, 0), out _), Is.True);
+            Assert.That(day.TryPerform(rest, out _), Is.True);
+            Assert.That(day.Energy, Is.EqualTo(75));
+            EndDay(day);
+            Assert.That(day.TryStartNextDay(false, out _), Is.True);
+            Assert.That(day.RecoveryLimit, Is.EqualTo(100));
+            Assert.That(day.Energy, Is.EqualTo(100));
+            Assert.That(day.Money, Is.EqualTo(120));
         }
 
         [Test] public void OfferPreviewAndDeclineAreFreeAndCannotBeReversedForRewards()

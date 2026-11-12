@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace MezhduParami
 {
@@ -34,6 +35,12 @@ namespace MezhduParami
         private IEnumerator Start()
         {
             yield return new WaitUntil(() => UnityEngine.Rendering.SplashScreen.isFinished);
+            if (FindFirstObjectByType<MechanicsSandboxUI>() != null && (scenario == "campus-night" || scenario == "campus-sleepless"))
+            {
+                DontDestroyOnLoad(gameObject);
+                yield return SceneManager.LoadSceneAsync("PrototypeDorm");
+                yield return null;
+            }
             yield return PrepareScenario();
             Component uiRoot = FindFirstObjectByType<PrototypeUI>();
             if (uiRoot == null) uiRoot = FindFirstObjectByType<MechanicsSandboxUI>();
@@ -97,16 +104,39 @@ namespace MezhduParami
             if (sandbox != null)
             {
                 if (scenario == "shop") sandbox.OpenStation(SandboxStationKind.Shop);
+                else if (scenario == "purchase")
+                {
+                    sandbox.OpenStation(SandboxStationKind.Shop);
+                    yield return null;
+                    sandbox.Choices[0].onClick.Invoke();
+                }
                 else if (scenario == "inventory-empty") sandbox.OpenInventory();
-                else if (scenario == "inventory" || scenario == "inventory-kit" || scenario == "inventory-after-use")
+                else if (scenario == "inventory" || scenario == "inventory-snack" || scenario == "inventory-after-use")
                 {
                     sandbox.State.BuyBook(out _);
-                    sandbox.State.BuyKit(out _);
-                    sandbox.State.BuyKit(out _);
+                    sandbox.State.BuySnack(out _);
+                    sandbox.State.BuySnack(out _);
                     sandbox.Refresh();
                     sandbox.OpenInventory();
-                    if (scenario != "inventory") sandbox.InventoryView.KitSlot.onClick.Invoke();
+                    if (scenario != "inventory") sandbox.InventoryView.SnackSlot.onClick.Invoke();
                     if (scenario == "inventory-after-use") sandbox.InventoryView.UseButton.onClick.Invoke();
+                }
+                else if (scenario == "fatigue" || scenario == "rested")
+                {
+                    for (int i = 0; i < 6; i++)
+                    {
+                        if (i == 3) sandbox.State.Rest(out _);
+                        sandbox.State.Study(out _);
+                    }
+                    sandbox.State.Rest(out _);
+                    sandbox.State.Rest(out _);
+                    sandbox.Refresh();
+                    if (scenario == "rested")
+                    {
+                        sandbox.OpenStation(SandboxStationKind.Rest);
+                        yield return null;
+                        sandbox.Choices[1].onClick.Invoke();
+                    }
                 }
                 else if (scenario == "sorting" || scenario == "copy")
                 {
@@ -118,7 +148,7 @@ namespace MezhduParami
                 else if (scenario == "completed")
                 {
                     sandbox.State.BuyBook(out _); sandbox.State.ReadBook(out _);
-                    sandbox.State.BuyKit(out _); sandbox.State.UseKit(out _);
+                    sandbox.State.BuySnack(out _); sandbox.State.EatSnack(out _);
                     sandbox.State.BeginWork(SandboxJob.Sorting, 7, out _); var sort = sandbox.State.ActiveOrder;
                     for (int i = 0; i < 3; i++) sandbox.State.Sort(sort.Id, sort.Target(i), out _);
                     sandbox.State.BeginWork(SandboxJob.CopyCenter, 8, out _); var copy = sandbox.State.ActiveOrder;
@@ -156,6 +186,13 @@ namespace MezhduParami
             }
             yield return Confirm(ui, "Sasha");
             if (scenario == "journal") { ui.OpenJournal(); yield break; }
+            if (scenario == "campus-night" || scenario == "campus-sleepless")
+            {
+                yield return Confirm(ui, "StudyDesk");
+                yield return Confirm(ui, "StudyDesk");
+                if (scenario == "campus-sleepless") ui.SkipSleepButton.onClick.Invoke();
+                yield break;
+            }
             while (ui.Day.DayNumber < 3)
             {
                 while (!ui.Day.IsComplete) yield return Confirm(ui, "Bed");

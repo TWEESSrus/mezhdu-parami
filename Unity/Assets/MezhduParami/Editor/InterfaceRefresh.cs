@@ -76,10 +76,9 @@ namespace MezhduParami.Editor
             var resources = Rect(hud, "Resources"); Place(resources, 206, 16, 514, 64); Card(resources, Paper);
             ui.MoneyValue = Resource(resources, "Money", "ДЕНЬГИ", "120", 0, Ink);
             ui.EnergyValue = Resource(resources, "Energy", "ЭНЕРГИЯ", "80 / 100", 1, Mint);
-            ui.HealthValue = Resource(resources, "Health", "ЗДОРОВЬЕ", "80 / 100", 2, Ink);
             ui.StudyValue = Resource(resources, "Study", "ГОТОВНОСТЬ", "0 / 6", 3, Ink);
             ui.EnergyFill = Meter(resources, "EnergyBar", 140, Mint);
-            ui.HealthFill = Meter(resources, "HealthBar", 268, "D49B80");
+            ConfigureEnergyRecovery(ui, resources);
             Hide(resources, "MoneyHint"); Hide(resources, "StudyHint");
 
             var quest = Rect(hud, "PromiseCard"); Place(quest, 16, 88, 428, 36); Card(quest, Paper);
@@ -145,6 +144,42 @@ namespace MezhduParami.Editor
             float x = 12 + index * 128;
             Label(parent, name + "Caption", caption, 11, Muted, x, 7, 116, 17);
             return Label(parent, name + "Value", value, 20, color, x, 25, 116, 27);
+        }
+
+        public static void ApplyEnergyRecovery()
+        {
+            if (EditorApplication.isPlaying || UnityEngine.SceneManagement.SceneManager.GetActiveScene().isDirty)
+                throw new InvalidOperationException("Exit Play Mode and save the scene first.");
+            var scene = EditorSceneManager.OpenScene(PrototypeSceneBuilder.ScenePath);
+            var ui = UnityEngine.Object.FindFirstObjectByType<PrototypeUI>();
+            if (ui == null || ui.EnergyValue == null || ui.DialogPanel == null)
+                throw new InvalidOperationException("Missing prototype resource or dialog references.");
+            body = ui.EnergyValue.font;
+            rounded = ui.DialogPanel.GetComponent<UnityEngine.UI.Image>().sprite;
+            ConfigureEnergyRecovery(ui, (RectTransform)ui.EnergyValue.transform.parent);
+            EditorUtility.SetDirty(ui);
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+        }
+
+        private static void ConfigureEnergyRecovery(PrototypeUI ui, RectTransform resources)
+        {
+            var oldCaption = resources.Find("HealthCaption");
+            if (oldCaption != null) oldCaption.name = "EnergyLimitCaption";
+            var oldValue = resources.Find("HealthValue");
+            if (oldValue != null) oldValue.name = "EnergyLimitValue";
+            var oldBar = resources.Find("HealthBar");
+            if (oldBar != null) UnityEngine.Object.DestroyImmediate(oldBar.gameObject);
+            ui.EnergyLimitValue = Resource(resources, "EnergyLimit", "ПРЕДЕЛ ЭНЕРГИИ", "100", 2, "DDB477");
+            ui.EnergyLimitCaption = resources.Find("EnergyLimitCaption").GetComponent<TMP_Text>();
+
+            var skipSleep = Rect(ui.DialogPanel.transform, "SkipSleep");
+            Place(skipSleep, 24, 376, 732, 40);
+            ui.SkipSleepButton = Component<UnityEngine.UI.Button>(skipSleep);
+            ButtonStyle(ui.SkipSleepButton, "Пропустить сон", false);
+            if (ui.SkipSleepButton.onClick.GetPersistentEventCount() == 0)
+                UnityEditor.Events.UnityEventTools.AddPersistentListener(ui.SkipSleepButton.onClick, ui.OnSkipSleep);
+            skipSleep.gameObject.SetActive(false);
         }
         private static UnityEngine.UI.Image Meter(RectTransform parent, string name, float x, string color)
         {

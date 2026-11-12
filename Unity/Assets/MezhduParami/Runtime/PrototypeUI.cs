@@ -14,10 +14,10 @@ namespace MezhduParami
         public TMP_Text QuestStatus;
         public TMP_Text MoneyValue;
         public TMP_Text EnergyValue;
-        public TMP_Text HealthValue;
+        public TMP_Text EnergyLimitCaption;
+        public TMP_Text EnergyLimitValue;
         public TMP_Text StudyValue;
         public UnityEngine.UI.Image EnergyFill;
-        public UnityEngine.UI.Image HealthFill;
         public CanvasGroup HudGroup;
         public CanvasGroup FooterGroup;
         public CanvasGroup FeedbackGroup;
@@ -30,6 +30,7 @@ namespace MezhduParami
         public TMP_Text PrimaryLabel;
         public UnityEngine.UI.Button PrimaryButton;
         public UnityEngine.UI.Button CancelButton;
+        public UnityEngine.UI.Button SkipSleepButton;
         public PlayerMotor Player;
         public SashaQuestDefinition QuestDefinition;
 
@@ -169,6 +170,13 @@ namespace MezhduParami
             else CloseDialog();
         }
 
+        public void OnSkipSleep()
+        {
+            if (screen != Screen.Night || lastInputFrame == Time.frameCount) return;
+            lastInputFrame = Time.frameCount;
+            FinishNight(false, skipSleep: true);
+        }
+
         private void CompleteAction(bool succeeded, string reason, string message)
         {
             CloseDialog();
@@ -178,7 +186,7 @@ namespace MezhduParami
             RefreshStatus();
             if (Day.IsFinished)
                 ShowDialog(Screen.Summary, "Первые дни позади",
-                    $"Три дня в общаге завершены.\nДеньги: {Day.Money}  •  Энергия: {Day.Energy}  •  Здоровье: {Day.Health}\nИнтеллект: {Day.IntelligenceLevel}  •  Готовность: {Day.Readiness}/6\n\n{Promise.Journal(Day)}\n\nЭто итог прототипа. История первого курса ещё в разработке.",
+                    $"Три дня в общаге завершены.\nДеньги {Day.Money}  •  Энергия {Day.Energy}/100  •  Предел {Day.RecoveryLimit}\nИнтеллект: {Day.IntelligenceLevel}  •  Готовность: {Day.Readiness}/6\n\n{Promise.Journal(Day)}\n\nЭто итог прототипа. История первого курса ещё в разработке.",
                     "Начать заново", false);
             else if (Day.IsComplete) OpenNight();
         }
@@ -186,18 +194,20 @@ namespace MezhduParami
         private void OpenNight()
         {
             ShowDialog(Screen.Night, $"День {Day.DayNumber} завершён",
-                $"Все три периода использованы.\n\nОбычная еда и сон: деньги -8, энергия +{(Day.Health < 40 ? 35 : 50)}, здоровье без изменений.\nБез еды: бесплатно, здоровье -8, энергия +30.\nЭнергия не превысит 100.\n\nУтром можно снова взять одну оплачиваемую смену.",
-                "Еда и сон: 8", true, "Без еды: здоровье -8");
+                "Сон снимает усталость и недосып. Предел восстановления снова 100.\n\nС едой за 8 сон вернёт до 50 энергии. Без еды — до 30.\nЕсли пропустить сон, энергия останется на прежнем уровне, а предел восстановления снизится до 75.",
+                "Поесть и спать · 8", true, "Спать без еды");
             PrimaryButton.interactable = Day.Money >= PrototypeDay.NormalFoodPrice;
             if (!PrimaryButton.interactable) DialogBody.text += "\nНа обычную еду не хватает денег.";
         }
 
-        private void FinishNight(bool buyFood)
+        private void FinishNight(bool buyFood, bool skipSleep = false)
         {
-            if (!Day.TryStartNextDay(buyFood, out var reason)) { Feedback.text = reason; return; }
+            string reason;
+            bool advanced = skipSleep ? Day.TrySkipSleep(out reason) : Day.TryStartNextDay(buyFood, out reason);
+            if (!advanced) { Feedback.text = reason; return; }
             DialogPanel.SetActive(false);
             screen = Screen.Explore;
-            Feedback.text = $"День {Day.DayNumber}. " + (buyFood ? "Еда оплачена, силы восстановлены." : "Без еды здоровье снизилось на 8.")
+            Feedback.text = $"День {Day.DayNumber}. " + (skipSleep ? "Недосып. Предел восстановления 75." : "После сна предел восстановления 100.")
                 + (Day.DayNumber == QuestDefinition.DueDay ? " Сегодня вечером: помощь Саше или разовая смена +80." : " J — журнал и сроки.");
             RefreshStatus();
         }
@@ -245,6 +255,7 @@ namespace MezhduParami
             string text = $"1 период  •  Энергия {Signed(activity.EnergyDelta)}  •  Деньги {Signed(activity.MoneyDelta)}";
             if (activity.IntelligenceExperience > 0) text += $"\nОпыт интеллекта +{activity.IntelligenceExperience}";
             if (activity.ReadinessDelta != 0) text += $"\nГотовность к учёбе {Signed(activity.ReadinessDelta)} (до 6)";
+            if (activity.Id == "rest") text += "\nОтдых снимает усталость. При недосыпе нужен сон.";
             return text;
         }
 
@@ -270,6 +281,7 @@ namespace MezhduParami
             PrimaryButton.interactable = true;
             CancelButton.GetComponentInChildren<TMP_Text>().text = secondary;
             CancelButton.gameObject.SetActive(cancel);
+            if (SkipSleepButton != null) SkipSleepButton.gameObject.SetActive(next == Screen.Night);
             DialogPanel.SetActive(true);
             Prompt.text = "";
             SyncPresentation();
@@ -281,10 +293,12 @@ namespace MezhduParami
             Status.text = Day.IsFinished ? "Итог первых дней" : Day.IsComplete ? "Ночь • отдых" : "Первый курс • " + Day.PeriodLabel;
             if (MoneyValue != null) MoneyValue.text = Day.Money.ToString();
             if (EnergyValue != null) EnergyValue.text = $"{Day.Energy}/100";
-            if (HealthValue != null) HealthValue.text = $"{Day.Health}/100";
+            if (EnergyLimitCaption != null) EnergyLimitCaption.text = Day.RecoveryLimit == EnergyReserve.Full
+                ? "ПРЕДЕЛ ЭНЕРГИИ"
+                : $"ПРЕДЕЛ • {Day.RecoveryStatus.ToUpperInvariant()}";
+            if (EnergyLimitValue != null) EnergyLimitValue.text = Day.RecoveryLimit.ToString();
             if (StudyValue != null) StudyValue.text = $"{Day.Readiness}/6";
             if (EnergyFill != null) EnergyFill.fillAmount = Day.Energy / 100f;
-            if (HealthFill != null) HealthFill.fillAmount = Day.Health / 100f;
             switch (Promise.State)
             {
                 case PromiseState.Promised:

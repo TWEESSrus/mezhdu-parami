@@ -16,7 +16,7 @@ namespace MezhduParami
         public TaskTrackerPanel Tasks;
         public SandboxState State { get; private set; } = new SandboxState();
         public bool InputBlocked => Window != null && Window.activeSelf;
-        private enum Screen { None, Shop, Inventory, Offer, Sort, Copy, Study, Rest, Result, Help, Reset }
+        private enum Screen { None, Shop, Inventory, Offer, Sort, Copy, Study, Rest, Help, Reset }
         private Screen screen;
         private SandboxJob job;
         private int lastClick = -1, lastClose = -1;
@@ -82,9 +82,9 @@ namespace MezhduParami
             lastClick = Time.frameCount;
             switch (screen)
             {
-                case Screen.Shop: Execute(index == 0 ? State.BuyBook : State.BuyKit); break;
+                case Screen.Shop: Execute(index == 0 ? State.BuyBook : State.BuySnack); break;
                 case Screen.Study: Execute(State.Study); break;
-                case Screen.Rest: Execute(State.Rest); break;
+                case Screen.Rest: Execute(index == 0 ? State.Rest : State.Sleep); break;
                 case Screen.Offer:
                     if (index == 1) ExecuteQuick();
                     else if (State.BeginWork(job, Random.Range(0, int.MaxValue), out hint))
@@ -103,7 +103,6 @@ namespace MezhduParami
                         if (State.ActiveOrder == null) Finish(hint); else Render();
                     }
                     break;
-                case Screen.Result: Show(Screen.Inventory); break;
                 case Screen.Help:
                     if (index == 0) Show(Screen.Reset);
                     else SceneManager.LoadScene("PrototypeDorm");
@@ -120,7 +119,11 @@ namespace MezhduParami
             Refresh();
         }
         private void ExecuteQuick() { State.QuickWork(job, out string message); Finish(message); }
-        private void Finish(string message) { Notify(message); Show(Screen.Result); Body.text = message; Refresh(); }
+        private void Finish(string message)
+        {
+            Close();
+            Notify(message);
+        }
         private void Notify(string text) { Toast.text = text; toastUntil = Time.unscaledTime + 10f; }
         private void Show(Screen next)
         {
@@ -142,9 +145,9 @@ namespace MezhduParami
             {
                 case Screen.Shop:
                     Title.text = "Лавка полезных вещей";
-                    Body.text = $"Деньги: {State.Money}. Покупка не повышает характеристики сама по себе.\nУчебник нужно прочитать в вещах [I]: -15 энергии, +3 опыта интеллекта один раз. Набор восстанавливает 20 здоровья при применении.\nУчебник — один, наборов — два на прохождение полигона.";
+                    Body.text = $"Деньги {State.Money}.\nУчебник даёт +3 опыта интеллекта при чтении за 15 энергии.\nПерекус восстанавливает до 20 энергии в пределах текущего лимита.";
                     Option(0, State.BookOwned ? "Учебник уже куплен" : "Купить вводный учебник — 60", !State.BookOwned && State.Money >= 60);
-                    Option(1, $"Купить набор восстановления — 20 ({2 - State.KitsBought} осталось)", State.KitsBought < 2 && State.Money >= 20);
+                    Option(1, $"Купить перекус — 20 ({2 - State.SnacksBought} осталось)", State.SnacksBought < 2 && State.Money >= 20);
                     break;
                 case Screen.Inventory:
                     Title.text = "Рюкзак";
@@ -179,12 +182,11 @@ namespace MezhduParami
                     Body.text = "Энергия -20, опыт интеллекта +1, готовность +1 (до 6).\nТри занятия открывают интеллект 1 без покупки книги. Здесь проверяем рост героя, без дней, периодов и экзаменационных сроков.";
                     Option(0, "Позаниматься", State.Energy >= 20 && State.Readiness < 6); break;
                 case Screen.Rest:
-                    Title.text = "Перевести дух";
-                    Body.text = "Энергия +40, до 100. Здоровье и деньги не меняются.\nВ полигоне отдых свободный, чтобы можно было сравнить механики и не ждать следующего дня.";
-                    Option(0, "Отдохнуть", State.Energy < 100); break;
-                case Screen.Result:
-                    Title.text = "Результат";
-                    Option(0, "Открыть мои вещи"); break;
+                    Title.text = "Отдых и сон";
+                    Body.text = $"{State.RecoveryStatus}. Предел восстановления {State.RecoveryLimit} из 100.\n\nОтдых снимает усталость и возвращает до 40 энергии. Сон также снимает недосып и возвращает до 50 энергии.\nУсталость появляется после трёх затратных действий подряд, недосып — после шести без сна.";
+                    Option(0, "Отдохнуть", State.CanRest);
+                    Option(1, "Выспаться", State.CanSleep);
+                    break;
                 case Screen.Help:
                     Title.text = "Полигон механик";
                     Body.text = "E — действие рядом с объектом. T — показать или скрыть задачи. I — вещи.\nЗадачи — необязательный маршрут знакомства с механиками. Сроков и календаря нет. Ошибки и отмена заказа бесплатны.\nПрогресс живёт до перезапуска; это проверочный режим, не баланс полного курса.";
@@ -197,9 +199,10 @@ namespace MezhduParami
         }
         public void Refresh()
         {
-            Resources.text = $"Деньги {State.Money}   •   Энергия {State.Energy}/100   •   Здоровье {State.Health}/100\nИнтеллект {State.IntelligenceLevel} ({State.IntelligenceExperience} опыта)   •   Готовность {State.Readiness}/6";
-            bool[] flags = { State.SortingCompleted > 0, State.BookOwned, State.BookRead, State.CopyCompleted > 0, State.KitsUsed > 0 };
-            string[] names = { "Разобрать три посылки", "Купить учебник", "Прочитать учебник", "Выполнить заказ копицентра", "Применить набор восстановления" };
+            string limit = State.RecoveryLimit < 100 ? $"   •   {State.RecoveryStatus}, предел {State.RecoveryLimit}" : "";
+            Resources.text = $"Деньги {State.Money}   •   Энергия {State.Energy}/100{limit}\nИнтеллект {State.IntelligenceLevel} ({State.IntelligenceExperience} опыта)   •   Готовность {State.Readiness}/6";
+            bool[] flags = { State.SortingCompleted > 0, State.BookOwned, State.BookRead, State.CopyCompleted > 0, State.SnacksUsed > 0 };
+            string[] names = { "Разобрать три посылки", "Купить учебник", "Прочитать учебник", "Выполнить заказ копицентра", "Использовать перекус" };
             string text = ""; int completed = 0;
             for (int i = 0; i < flags.Length; i++) { if (flags[i]) completed++; text += (flags[i] ? "[x] " : "[ ] ") + names[i] + "\n\n"; }
             Tasks.SetEntries(text.TrimEnd(), completed, flags.Length);

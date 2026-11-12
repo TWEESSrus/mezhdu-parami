@@ -182,12 +182,14 @@ namespace MezhduParami.Editor
             view.BookCount = Label(view.BookSlot.transform, "Count", "", 13, 69, 7, 29, 18);
             view.BookCount.alignment = TextAlignmentOptions.TopRight;
 
-            view.KitSlot = InventorySlot(area, "Kit", 142);
-            view.KitIcon = Icon(view.KitSlot.transform, "Icon", KitSprite(), 29, 17, 48);
-            view.KitLabel = Label(view.KitSlot.transform, "Label", "Набор", 14, 5, 76, 96, 23);
-            view.KitLabel.alignment = TextAlignmentOptions.Center;
-            view.KitCount = Label(view.KitSlot.transform, "Count", "", 13, 69, 7, 29, 18);
-            view.KitCount.alignment = TextAlignmentOptions.TopRight;
+            var oldKit = area.Find("Kit");
+            if (oldKit != null) oldKit.name = "Snack";
+            view.SnackSlot = InventorySlot(area, "Snack", 142);
+            view.SnackIcon = Icon(view.SnackSlot.transform, "Icon", SnackSprite(), 29, 17, 48);
+            view.SnackLabel = Label(view.SnackSlot.transform, "Label", "Перекус", 14, 5, 76, 96, 23);
+            view.SnackLabel.alignment = TextAlignmentOptions.Center;
+            view.SnackCount = Label(view.SnackSlot.transform, "Count", "", 13, 69, 7, 29, 18);
+            view.SnackCount.alignment = TextAlignmentOptions.TopRight;
 
             for (int i = 2; i < 6; i++)
             {
@@ -262,27 +264,27 @@ namespace MezhduParami.Editor
             }, "392718", "AD7735", "E3B45F", "FCE6AC", "F6DCA0");
         }
 
-        private static Sprite KitSprite()
+        private static Sprite SnackSprite()
         {
-            return CreateItemSprite("InventoryRecoveryKit", new[]
+            return CreateItemSprite("InventorySnack", new[]
             {
                 "................",
                 "................",
-                "......1111......",
-                ".....122221.....",
-                ".....121121.....",
-                "..111111111111..",
-                ".12333333333321.",
-                ".12333443333321.",
-                ".12334444333321.",
-                ".12334444333321.",
-                ".12333443333321.",
-                ".12333333333321.",
+                "................",
+                ".....111111.....",
+                "...1122222211...",
+                "..122222222221..",
                 ".12222222222221.",
-                "..111111111111..",
+                ".13333333333331.",
+                ".14444444444441.",
+                ".13333333333331.",
+                ".12222222222221.",
+                "..122222222221..",
+                "...1111111111...",
+                "................",
                 "................",
                 "................"
-            }, "302B24", "697153", "A7AD79", "FFF0BC");
+            }, "56351D", "F0BA6D", "82A156", "B85737");
         }
 
         private static Sprite CreateItemSprite(string name, string[] rows, params string[] palette)

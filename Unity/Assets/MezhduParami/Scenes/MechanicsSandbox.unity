@@ -5374,7 +5374,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\u041D\u0430\u0431\u043E\u0440"
+  m_text: "\u041F\u0435\u0440\u0435\u043A\u0443\u0441"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: b054db9f75e90c64385275f7f4b00858, type: 2}
   m_sharedMaterial: {fileID: 6928265596936084774, guid: b054db9f75e90c64385275f7f4b00858, type: 2}
@@ -8506,7 +8506,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 85bbdd75e5508dc4687b0d289cd76202, type: 2}
+  m_Sprite: {fileID: 21300000, guid: 682699331e1cd684f977315d3d916bc1, type: 2}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1
@@ -9526,15 +9526,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: MezhduParami.Runtime::MezhduParami.SandboxInventoryView
   BookSlot: {fileID: 589578680}
-  KitSlot: {fileID: 1438507659}
+  SnackSlot: {fileID: 1438507659}
   UseButton: {fileID: 1238984204}
   BookIcon: {fileID: 1187537995}
-  KitIcon: {fileID: 1275632610}
+  SnackIcon: {fileID: 1275632610}
   PreviewIcon: {fileID: 1678163432}
   BookLabel: {fileID: 431440293}
-  KitLabel: {fileID: 818802096}
+  SnackLabel: {fileID: 818802096}
   BookCount: {fileID: 1318527458}
-  KitCount: {fileID: 1031067832}
+  SnackCount: {fileID: 1031067832}
   Category: {fileID: 1946391288}
   ItemName: {fileID: 1225480570}
   Description: {fileID: 1726840329}
@@ -9815,7 +9815,7 @@ GameObject:
   - component: {fileID: 1438507660}
   - component: {fileID: 1438507659}
   m_Layer: 0
-  m_Name: Kit
+  m_Name: Snack
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

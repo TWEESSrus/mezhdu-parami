@@ -6,12 +6,12 @@ namespace MezhduParami
 {
     public sealed class SandboxInventoryView : MonoBehaviour
     {
-        public Button BookSlot, KitSlot, UseButton;
-        public Image BookIcon, KitIcon, PreviewIcon;
-        public TMP_Text BookLabel, KitLabel, BookCount, KitCount;
+        public Button BookSlot, SnackSlot, UseButton;
+        public Image BookIcon, SnackIcon, PreviewIcon;
+        public TMP_Text BookLabel, SnackLabel, BookCount, SnackCount;
         public TMP_Text Category, ItemName, Description, Effect, Feedback, UseLabel;
 
-        private enum Item { None, Book, Kit }
+        private enum Item { None, Book, Snack }
         private static readonly Color32 SlotColor = new Color32(60, 46, 36, 255);
         private static readonly Color32 SelectedColor = new Color32(118, 84, 47, 255);
         private SandboxState state;
@@ -20,7 +20,7 @@ namespace MezhduParami
         private void Awake()
         {
             BookSlot.onClick.AddListener(() => Select(Item.Book));
-            KitSlot.onClick.AddListener(() => Select(Item.Kit));
+            SnackSlot.onClick.AddListener(() => Select(Item.Snack));
         }
 
         public void Open(SandboxState current)
@@ -36,7 +36,7 @@ namespace MezhduParami
         {
             string message = "Выбери предмет.";
             if (selected == Item.Book) state.ReadBook(out message);
-            else if (selected == Item.Kit) state.UseKit(out message);
+            else if (selected == Item.Snack) state.EatSnack(out message);
             Feedback.text = message;
             Refresh();
             return message;
@@ -52,16 +52,16 @@ namespace MezhduParami
 
         private bool Owned(Item item)
         {
-            return item == Item.Book && state.BookOwned || item == Item.Kit && state.Kits > 0;
+            return item == Item.Book && state.BookOwned || item == Item.Snack && state.Snacks > 0;
         }
 
         private void Refresh()
         {
             if (!Owned(selected))
-                selected = state.BookOwned ? Item.Book : state.Kits > 0 ? Item.Kit : Item.None;
+                selected = state.BookOwned ? Item.Book : state.Snacks > 0 ? Item.Snack : Item.None;
 
             UpdateSlot(BookSlot, BookIcon, BookLabel, BookCount, state.BookOwned ? 1 : 0, selected == Item.Book);
-            UpdateSlot(KitSlot, KitIcon, KitLabel, KitCount, state.Kits, selected == Item.Kit);
+            UpdateSlot(SnackSlot, SnackIcon, SnackLabel, SnackCount, state.Snacks, selected == Item.Snack);
             PreviewIcon.enabled = selected != Item.None;
             Effect.transform.parent.gameObject.SetActive(selected != Item.None);
             UseButton.gameObject.SetActive(selected != Item.None);
@@ -81,21 +81,21 @@ namespace MezhduParami
                     UseLabel.text = state.BookRead ? "Прочитан" : "Прочитать";
                     UseButton.interactable = !state.BookRead && state.Energy >= 15;
                     break;
-                case Item.Kit:
-                    PreviewIcon.sprite = KitIcon.sprite;
+                case Item.Snack:
+                    PreviewIcon.sprite = SnackIcon.sprite;
                     Category.text = "РАСХОДНИК";
-                    ItemName.text = "Набор восстановления";
-                    Description.text = "Восстанавливает до 20 здоровья и расходует один набор.";
-                    Effect.text = state.Health >= 100
-                        ? "Здоровье полное. Набор можно оставить на потом."
-                        : $"Здоровье {state.Health} → {Mathf.Min(100, state.Health + 20)}\nНаборов {state.Kits} → {state.Kits - 1}";
-                    UseLabel.text = "Применить";
-                    UseButton.interactable = state.Health < 100;
+                    ItemName.text = "Перекус";
+                    Description.text = "Восстанавливает до 20 энергии в пределах текущего лимита.";
+                    Effect.text = state.SnackRecovery == 0
+                        ? "Достигнут предел восстановления. Перекус сохранится."
+                        : $"Энергия {state.Energy} → {state.Energy + state.SnackRecovery}\nПредел восстановления {state.RecoveryLimit}";
+                    UseLabel.text = "Съесть";
+                    UseButton.interactable = state.SnackRecovery > 0;
                     break;
                 default:
                     Category.text = "";
                     ItemName.text = "Рюкзак пуст";
-                    Description.text = "Учебник и набор восстановления можно купить в лавке.";
+                    Description.text = "Учебник и перекус можно купить в лавке.";
                     Effect.text = "";
                     UseButton.interactable = false;
                     break;
