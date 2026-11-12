@@ -1,0 +1,12 @@
+Unity Windows build
+Build Finished, Result: Success.
+
+Windows Player captures (RenderTexture)
+02-world | Prototype rendering captured.
+03-shop | Prototype rendering captured.
+04-inventory | Prototype rendering captured.
+05-sorting | Prototype rendering captured.
+06-copy-center | Prototype rendering captured.
+07-completed | Prototype rendering captured.
+08-tasks-hidden | Prototype rendering captured.
+09-small-window | Prototype rendering captured.

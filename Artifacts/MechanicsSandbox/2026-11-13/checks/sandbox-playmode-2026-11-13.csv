@@ -1,0 +1,4 @@
+"Mode","StartedUtc","Test","Result","Seconds"
+"PlayMode","2026-11-12 19:08:49Z","MezhduParami.Tests.SandboxInteractionTests.ButtonsCanCompletePurchaseProgressionAndBothJobsWithoutDoubleRewards","Passed","2.000275"
+"PlayMode","2026-11-12 19:08:49Z","MezhduParami.Tests.SandboxInteractionTests.CancelAndQuickWorkRespectCostsAndInteractionPromptsClear","Passed","0.599654"
+"PlayMode","2026-11-12 19:08:49Z","MezhduParami.Tests.SandboxInteractionTests.TaskToggleDoesNotBlockMovementButModalDoes","Passed","1.438281"

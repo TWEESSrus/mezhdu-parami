@@ -136,11 +136,11 @@ namespace MezhduParami.Editor
             ui.HelpButton = Button(header, "Help", "Esc  Меню", 790, 12, 106, 30);
             ui.Tasks = ui.GetComponent<TaskTrackerPanel>();
             ui.Tasks.ToggleButton = Button(header, "TaskToggle", "T  Задачи", 790, 57, 106, 32);
-            var tasks = Panel(root, "TaskPanel", 0, 0, 312, 296);
+            var tasks = Panel(root, "TaskPanel", 0, 0, 312, 242);
             tasks.anchorMin = tasks.anchorMax = tasks.pivot = Vector2.one; tasks.anchoredPosition = new Vector2(-18, -18);
             ui.Tasks.Panel = tasks.gameObject;
             ui.Tasks.Caption = Label(tasks, "Caption", "Задачи [T]", 20, 14, 12, 284, 29, true);
-            ui.Tasks.Entries = Label(tasks, "Entries", "", 15, 14, 54, 284, 224);
+            ui.Tasks.Entries = Label(tasks, "Entries", "", 15, 14, 54, 284, 176);
             tasks.gameObject.SetActive(true);
 
             var prompt = Panel(root, "PromptCard", 0, 0, 650, 38); Bottom(prompt, 18, 42);
