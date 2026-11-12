@@ -82,10 +82,21 @@ namespace MezhduParami.Tests
         }
         [UnityTest] public IEnumerator ButtonsCanCompletePurchaseProgressionAndBothJobsWithoutDoubleRewards()
         {
+            yield return Press(Key.I); yield return Press();
+            var inventory = ui.InventoryView;
+            Assert.That(inventory.gameObject.activeInHierarchy, Is.True);
+            Assert.That(inventory.UseButton.gameObject.activeSelf, Is.False);
+            yield return Press(Key.I); yield return Press();
+            Assert.That(ui.InputBlocked, Is.False);
             yield return Open(SandboxStationKind.Shop); yield return Choice(0);
             Assert.That(ui.State.Money, Is.EqualTo(60)); Assert.That(ui.State.BookRead, Is.False);
-            yield return Close(); ui.InventoryButton.onClick.Invoke(); yield return Choice(0);
+            yield return Close(); ui.InventoryButton.onClick.Invoke(); yield return null;
+            Assert.That(inventory.BookSlot.interactable, Is.True);
+            inventory.BookSlot.onClick.Invoke();
+            inventory.UseButton.onClick.Invoke(); inventory.UseButton.onClick.Invoke(); yield return null;
             Assert.That(ui.State.IntelligenceLevel, Is.EqualTo(1)); Assert.That(ui.State.Energy, Is.EqualTo(65));
+            Assert.That(inventory.gameObject.activeInHierarchy, Is.True);
+            Assert.That(inventory.UseButton.interactable, Is.False);
             yield return Close(); yield return Open(SandboxStationKind.Sorting); yield return Choice(0);
             var order = ui.State.ActiveOrder;
             for (int i = 0; i < 3; i++) yield return Choice(order.Target(i));
@@ -97,8 +108,14 @@ namespace MezhduParami.Tests
             Assert.That(ui.State.CopyCompleted, Is.EqualTo(1)); Assert.That(ui.State.Money, Is.EqualTo(130));
             Assert.That(ui.State.Energy, Is.EqualTo(30));
             yield return Close(); yield return Open(SandboxStationKind.Shop); yield return Choice(1);
-            yield return Close(); ui.InventoryButton.onClick.Invoke(); yield return Choice(1);
-            Assert.That(ui.State.Health, Is.EqualTo(100)); Assert.That(ui.State.Kits, Is.Zero);
+            yield return Close(); yield return Open(SandboxStationKind.Shop); yield return Choice(1);
+            yield return Close(); ui.InventoryButton.onClick.Invoke(); yield return null;
+            inventory.KitSlot.onClick.Invoke();
+            Assert.That(inventory.KitCount.text, Is.EqualTo("×2"));
+            inventory.UseButton.onClick.Invoke(); inventory.UseButton.onClick.Invoke(); yield return null;
+            Assert.That(ui.State.Health, Is.EqualTo(100)); Assert.That(ui.State.Kits, Is.EqualTo(1));
+            Assert.That(inventory.KitCount.text, Is.EqualTo("×1"));
+            Assert.That(inventory.UseButton.interactable, Is.False);
             Assert.That(ui.Tasks.Caption.text, Does.Contain("5/5"));
         }
         [UnityTest] public IEnumerator CancelAndQuickWorkRespectCostsAndInteractionPromptsClear()

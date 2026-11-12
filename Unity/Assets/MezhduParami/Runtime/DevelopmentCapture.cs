@@ -97,9 +97,16 @@ namespace MezhduParami
             if (sandbox != null)
             {
                 if (scenario == "shop") sandbox.OpenStation(SandboxStationKind.Shop);
-                else if (scenario == "inventory")
+                else if (scenario == "inventory-empty") sandbox.OpenInventory();
+                else if (scenario == "inventory" || scenario == "inventory-kit" || scenario == "inventory-after-use")
                 {
-                    sandbox.State.BuyBook(out _); sandbox.State.BuyKit(out _); sandbox.Refresh(); sandbox.OpenInventory();
+                    sandbox.State.BuyBook(out _);
+                    sandbox.State.BuyKit(out _);
+                    sandbox.State.BuyKit(out _);
+                    sandbox.Refresh();
+                    sandbox.OpenInventory();
+                    if (scenario != "inventory") sandbox.InventoryView.KitSlot.onClick.Invoke();
+                    if (scenario == "inventory-after-use") sandbox.InventoryView.UseButton.onClick.Invoke();
                 }
                 else if (scenario == "sorting" || scenario == "copy")
                 {

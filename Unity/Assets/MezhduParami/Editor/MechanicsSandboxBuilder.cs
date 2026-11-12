@@ -132,7 +132,7 @@ namespace MezhduParami.Editor
             var header = Panel(root, "Header", 18, 18, 910, 102);
             Label(header, "Title", "ПОЛИГОН МЕХАНИК • БЕЗ КАЛЕНДАРЯ", 22, 14, 10, 750, 30, true);
             ui.Resources = Label(header, "Resources", "", 17, 14, 47, 650, 48);
-            ui.InventoryButton = Button(header, "Inventory", "I  Вещи", 682, 57, 100, 32);
+            ui.InventoryButton = Button(header, "Inventory", "I  Рюкзак", 682, 57, 100, 32);
             ui.HelpButton = Button(header, "Help", "Esc  Меню", 790, 12, 106, 30);
             ui.Tasks = ui.GetComponent<TaskTrackerPanel>();
             ui.Tasks.ToggleButton = Button(header, "TaskToggle", "T  Задачи", 790, 57, 106, 32);
@@ -161,12 +161,166 @@ namespace MezhduParami.Editor
             ui.Body = Label(window, "Body", "", 18, 24, 74, 732, 162);
             ui.Choices = new UnityEngine.UI.Button[4];
             for (int i = 0; i < 4; i++) ui.Choices[i] = Button(window, "Choice" + i, "", 24, 248 + i * 48, 732, 40);
+            ui.InventoryView = BuildInventory(window);
             ui.CloseButton = Button(window, "Close", "Закрыть / Esc", 24, 468, 732, 44);
             shade.SetAsLastSibling(); window.SetAsLastSibling();
             ui.Window.SetActive(false); ui.Backdrop.SetActive(false);
             ui.PromptCard.SetActive(false); ui.ToastCard.SetActive(false);
             EditorUtility.SetDirty(ui); EditorUtility.SetDirty(ui.Tasks);
         }
+
+        private static SandboxInventoryView BuildInventory(RectTransform window)
+        {
+            var area = Rect(window, "Backpack");
+            Place(area, 0, 0, 780, 452);
+            var view = Component<SandboxInventoryView>(area);
+
+            view.BookSlot = InventorySlot(area, "Book", 24);
+            view.BookIcon = Icon(view.BookSlot.transform, "Icon", BookSprite(), 29, 17, 48);
+            view.BookLabel = Label(view.BookSlot.transform, "Label", "Учебник", 14, 5, 76, 96, 23);
+            view.BookLabel.alignment = TextAlignmentOptions.Center;
+            view.BookCount = Label(view.BookSlot.transform, "Count", "", 13, 69, 7, 29, 18);
+            view.BookCount.alignment = TextAlignmentOptions.TopRight;
+
+            view.KitSlot = InventorySlot(area, "Kit", 142);
+            view.KitIcon = Icon(view.KitSlot.transform, "Icon", KitSprite(), 29, 17, 48);
+            view.KitLabel = Label(view.KitSlot.transform, "Label", "Набор", 14, 5, 76, 96, 23);
+            view.KitLabel.alignment = TextAlignmentOptions.Center;
+            view.KitCount = Label(view.KitSlot.transform, "Count", "", 13, 69, 7, 29, 18);
+            view.KitCount.alignment = TextAlignmentOptions.TopRight;
+
+            for (int i = 2; i < 6; i++)
+            {
+                var empty = Panel(area, "EmptySlot" + i, 24 + i % 3 * 118, 80 + i / 3 * 118, 106, 106);
+                empty.GetComponent<UnityEngine.UI.Image>().color = ColorOf("3C2E24");
+            }
+
+            view.Feedback = Label(area, "Feedback", "", 16, 24, 326, 342, 112);
+            view.Feedback.color = ColorOf("E4C68B");
+            view.Feedback.textWrappingMode = TextWrappingModes.Normal;
+
+            var details = Panel(area, "Details", 388, 80, 368, 362);
+            details.GetComponent<UnityEngine.UI.Image>().color = ColorOf("413126");
+            view.Category = Label(details, "Category", "", 14, 18, 17, 332, 23);
+            view.Category.color = ColorOf("DDB477");
+            view.ItemName = Label(details, "ItemName", "", 22, 18, 41, 332, 40, true);
+            view.PreviewIcon = Icon(details, "Preview", null, 18, 92, 72);
+            view.Description = Label(details, "Description", "", 17, 106, 94, 244, 94);
+            view.Description.textWrappingMode = TextWrappingModes.Normal;
+            var effect = Panel(details, "EffectPanel", 18, 196, 332, 72);
+            effect.GetComponent<UnityEngine.UI.Image>().color = ColorOf("30261F");
+            view.Effect = Label(effect, "Effect", "", 16, 12, 12, 308, 51);
+            view.Effect.color = ColorOf("E4C68B");
+            view.Effect.textWrappingMode = TextWrappingModes.Normal;
+            view.UseButton = Button(details, "Use", "Применить", 18, 292, 332, 45);
+            view.UseLabel = view.UseButton.GetComponentInChildren<TMP_Text>();
+            EditorUtility.SetDirty(view);
+            area.gameObject.SetActive(false);
+            return view;
+        }
+
+        private static UnityEngine.UI.Button InventorySlot(RectTransform parent, string name, float x)
+        {
+            var slot = Button(parent, name, "", x, 80, 106, 106);
+            var colors = slot.colors;
+            colors.disabledColor = Color.white;
+            slot.colors = colors;
+            return slot;
+        }
+
+        private static UnityEngine.UI.Image Icon(Transform parent, string name, Sprite sprite, float x, float y, float size)
+        {
+            var rect = Rect(parent, name);
+            Place(rect, x, y, size, size);
+            var icon = Component<UnityEngine.UI.Image>(rect);
+            icon.sprite = sprite;
+            icon.preserveAspect = true;
+            icon.raycastTarget = false;
+            return icon;
+        }
+
+        private static Sprite BookSprite()
+        {
+            return CreateItemSprite("InventoryBook", new[]
+            {
+                "................",
+                "....111111111...",
+                "...12222222221..",
+                "..123333333321..",
+                "..123333333321..",
+                "..123444443321..",
+                "..123444443321..",
+                "..123333333321..",
+                "..123344333321..",
+                "..123333333321..",
+                "..122222222221..",
+                "..155555555511..",
+                "..155555555511..",
+                "...1111111111...",
+                "................",
+                "................"
+            }, "392718", "AD7735", "E3B45F", "FCE6AC", "F6DCA0");
+        }
+
+        private static Sprite KitSprite()
+        {
+            return CreateItemSprite("InventoryRecoveryKit", new[]
+            {
+                "................",
+                "................",
+                "......1111......",
+                ".....122221.....",
+                ".....121121.....",
+                "..111111111111..",
+                ".12333333333321.",
+                ".12333443333321.",
+                ".12334444333321.",
+                ".12334444333321.",
+                ".12333443333321.",
+                ".12333333333321.",
+                ".12222222222221.",
+                "..111111111111..",
+                "................",
+                "................"
+            }, "302B24", "697153", "A7AD79", "FFF0BC");
+        }
+
+        private static Sprite CreateItemSprite(string name, string[] rows, params string[] palette)
+        {
+            string path = Root + "Art/" + name + ".asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (existing != null) return existing;
+
+            int width = rows[0].Length;
+            int height = rows.Length;
+            var colors = palette.Select(ColorOf).ToArray();
+            var pixels = new Color[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                if (rows[y].Length != width) throw new InvalidOperationException("Invalid icon row width for " + name);
+                for (int x = 0; x < width; x++)
+                {
+                    char pixel = rows[y][x];
+                    pixels[(height - 1 - y) * width + x] = pixel == '.' ? Color.clear : colors[pixel - '1'];
+                }
+            }
+
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                name = name + "Texture",
+                filterMode = FilterMode.Point,
+                wrapMode = TextureWrapMode.Clamp
+            };
+            texture.SetPixels(pixels);
+            texture.Apply();
+            var sprite = Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(.5f, .5f), 16, 0, SpriteMeshType.FullRect);
+            sprite.name = name;
+            AssetDatabase.CreateAsset(sprite, path);
+            AssetDatabase.AddObjectToAsset(texture, sprite);
+            EditorUtility.SetDirty(sprite);
+            return sprite;
+        }
+
         private static RectTransform Panel(Transform parent, string name, float x, float y, float w, float h)
         {
             var rect = Rect(parent, name); Place(rect, x, y, w, h);

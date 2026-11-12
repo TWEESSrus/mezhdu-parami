@@ -1,0 +1,9 @@
+Unity Windows build
+Build Finished, Result: Success.
+
+Windows Player captures (RenderTexture)
+02-book | Prototype rendering captured.
+03-kit | Prototype rendering captured.
+04-after-use | Prototype rendering captured.
+05-empty | Prototype rendering captured.
+06-small-window | Prototype rendering captured.

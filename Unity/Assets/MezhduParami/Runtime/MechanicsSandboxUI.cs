@@ -12,6 +12,7 @@ namespace MezhduParami
         public GameObject Window, Backdrop, PromptCard, ToastCard;
         public Button[] Choices;
         public Button CloseButton, InventoryButton, HelpButton;
+        public SandboxInventoryView InventoryView;
         public TaskTrackerPanel Tasks;
         public SandboxState State { get; private set; } = new SandboxState();
         public bool InputBlocked => Window != null && Window.activeSelf;
@@ -32,6 +33,7 @@ namespace MezhduParami
             for (int i = 0; i < Choices.Length; i++) { int index = i; Choices[i].onClick.AddListener(() => Choose(index)); }
             CloseButton.onClick.AddListener(Close);
             InventoryButton.onClick.AddListener(OpenInventory);
+            InventoryView.UseButton.onClick.AddListener(UseInventoryItem);
             HelpButton.onClick.AddListener(OpenHelp);
         }
         private void Start()
@@ -81,7 +83,6 @@ namespace MezhduParami
             switch (screen)
             {
                 case Screen.Shop: Execute(index == 0 ? State.BuyBook : State.BuyKit); break;
-                case Screen.Inventory: Execute(index == 0 ? State.ReadBook : State.UseKit); break;
                 case Screen.Study: Execute(State.Study); break;
                 case Screen.Rest: Execute(State.Rest); break;
                 case Screen.Offer:
@@ -111,6 +112,13 @@ namespace MezhduParami
             }
         }
         private void Execute(Command command) { command(out string message); Finish(message); }
+        private void UseInventoryItem()
+        {
+            if (screen != Screen.Inventory || !InventoryView.UseButton.IsInteractable() || lastClick == Time.frameCount) return;
+            lastClick = Time.frameCount;
+            Notify(InventoryView.UseSelected());
+            Refresh();
+        }
         private void ExecuteQuick() { State.QuickWork(job, out string message); Finish(message); }
         private void Finish(string message) { Notify(message); Show(Screen.Result); Body.text = message; Refresh(); }
         private void Notify(string text) { Toast.text = text; toastUntil = Time.unscaledTime + 10f; }
@@ -127,6 +135,8 @@ namespace MezhduParami
         private void Render()
         {
             foreach (var choice in Choices) choice.gameObject.SetActive(false);
+            Body.gameObject.SetActive(screen != Screen.Inventory);
+            if (screen != Screen.Inventory) InventoryView.gameObject.SetActive(false);
             CloseButton.GetComponentInChildren<TMP_Text>().text = State.ActiveOrder != null ? "Отменить заказ / Esc — без затрат" : "Закрыть / Esc";
             switch (screen)
             {
@@ -137,10 +147,8 @@ namespace MezhduParami
                     Option(1, $"Купить набор восстановления — 20 ({2 - State.KitsBought} осталось)", State.KitsBought < 2 && State.Money >= 20);
                     break;
                 case Screen.Inventory:
-                    Title.text = "Мои вещи";
-                    Body.text = $"Учебник: {(State.BookRead ? "прочитан" : State.BookOwned ? "куплен, ещё не прочитан" : "не куплен")}.\nНаборы восстановления: {State.Kits}.\nПокупка и применение — разные действия. Повторное чтение не выдаёт опыт. При полном здоровье набор сохраняется.";
-                    Option(0, "Прочитать учебник: энергия -15, опыт +3", State.BookOwned && !State.BookRead && State.Energy >= 15);
-                    Option(1, "Применить набор: здоровье +20", State.Kits > 0 && State.Health < 100);
+                    Title.text = "Рюкзак";
+                    InventoryView.Open(State);
                     break;
                 case Screen.Offer:
                     Title.text = job == SandboxJob.Sorting ? "Подработка: разбор посылок" : "Подработка: копицентр";
