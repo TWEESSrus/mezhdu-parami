@@ -7,13 +7,15 @@ namespace MezhduParami
     public sealed class PrototypeDay
     {
         public const int PeriodsPerDay = 3;
-        public const int NormalFoodPrice = 8;
+        private readonly EnergyReserve energy = new EnergyReserve();
         public int TotalDays { get; }
         public int DayNumber { get; private set; } = 1;
         public int Period { get; private set; }
         public int Money { get; private set; } = 120;
-        public int Energy { get; private set; } = 80;
-        public int Health { get; private set; } = 80;
+        public int Energy => energy.Current;
+        public int RecoveryLimit => energy.Limit;
+        public int Fatigue => energy.Fatigue;
+        public int RestsRemaining => energy.RestsRemaining;
         public int IntelligenceExperience { get; private set; }
         public int Readiness { get; private set; }
         public bool HasWorked { get; private set; }
@@ -36,6 +38,8 @@ namespace MezhduParami
                 reason = "Занятие не настроено.";
             else if (IsComplete)
                 reason = "Все три периода использованы.";
+            else if (activity.Id == "rest" && RestsRemaining == 0)
+                reason = "Оба отдыха на сегодня использованы. Можно лечь спать.";
             else if (activity.IsWork && HasWorked)
                 reason = "Сегодня уже была оплачиваемая смена.";
             else if (Money + activity.MoneyDelta < 0)
@@ -54,7 +58,9 @@ namespace MezhduParami
         {
             if (!CanPerform(activity, out reason)) return false;
             Money += activity.MoneyDelta;
-            Energy = Mathf.Clamp(Energy + activity.EnergyDelta, 0, 100);
+            if (activity.EnergyDelta < 0) energy.Spend(-activity.EnergyDelta);
+            else if (activity.Id == "rest") energy.Rest(activity.EnergyDelta);
+            else energy.Recover(activity.EnergyDelta);
             IntelligenceExperience += Mathf.Max(0, activity.IntelligenceExperience);
             Readiness = Mathf.Clamp(Readiness + activity.ReadinessDelta, 0, 6);
             if (activity.IsWork) HasWorked = true;
@@ -62,24 +68,38 @@ namespace MezhduParami
             return true;
         }
 
-        public bool TryStartNextDay(bool buyFood, out string reason)
+        public bool TrySleep(out string reason)
         {
-            if (!IsComplete) reason = "Сначала используй три периода дня.";
-            else if (IsFinished) reason = "Тестовый сценарий завершён.";
-            else if (buyFood && Money < NormalFoodPrice) reason = "На обычную еду нужно 8. Можно пропустить питание с потерей здоровья.";
-            else
+            if (IsFinished)
             {
-                if (buyFood) Money -= NormalFoodPrice;
-                else Health = Mathf.Max(0, Health - 8);
-                int recovery = buyFood ? (Health < 40 ? 35 : 50) : 30;
-                Energy = Mathf.Min(100, Energy + recovery);
-                DayNumber++;
-                Period = 0;
-                HasWorked = false;
-                reason = string.Empty;
-                return true;
+                reason = "Тестовый сценарий завершён.";
+                return false;
             }
-            return false;
+            energy.Sleep();
+            if (DayNumber == TotalDays) Period = PeriodsPerDay;
+            else StartMorning();
+            reason = string.Empty;
+            return true;
+        }
+
+        public bool TrySkipSleep(out string reason)
+        {
+            if (!IsComplete || IsFinished)
+            {
+                reason = "Пропустить сон можно в конце дня.";
+                return false;
+            }
+            energy.SkipSleep();
+            StartMorning();
+            reason = string.Empty;
+            return true;
+        }
+
+        private void StartMorning()
+        {
+            DayNumber++;
+            Period = 0;
+            HasWorked = false;
         }
     }
 }

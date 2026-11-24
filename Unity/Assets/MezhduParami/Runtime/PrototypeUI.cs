@@ -14,10 +14,8 @@ namespace MezhduParami
         public TMP_Text QuestStatus;
         public TMP_Text MoneyValue;
         public TMP_Text EnergyValue;
-        public TMP_Text HealthValue;
         public TMP_Text StudyValue;
-        public UnityEngine.UI.Image EnergyFill;
-        public UnityEngine.UI.Image HealthFill;
+        public EnergyMeter EnergyBar;
         public CanvasGroup HudGroup;
         public CanvasGroup FooterGroup;
         public CanvasGroup FeedbackGroup;
@@ -30,10 +28,11 @@ namespace MezhduParami
         public TMP_Text PrimaryLabel;
         public UnityEngine.UI.Button PrimaryButton;
         public UnityEngine.UI.Button CancelButton;
+        public UnityEngine.UI.Button SleepOption;
         public PlayerMotor Player;
         public SashaQuestDefinition QuestDefinition;
 
-        private enum Screen { Selection, Explore, Activity, Conversation, Pause, Summary, QuestOffer, QuestHelp, SpecialShift, Night, Journal }
+        private enum Screen { Selection, Explore, Activity, Bed, Conversation, Pause, Summary, QuestOffer, QuestHelp, SpecialShift, Night, Journal }
         private Screen screen = Screen.Selection;
         private ActivityDefinition pendingActivity;
         private string student = "Студент";
@@ -88,7 +87,7 @@ namespace MezhduParami
             Player.Shirt.color = female ? new Color32(166, 92, 185, 255) : new Color32(49, 129, 155, 255);
             SelectionPanel.SetActive(false);
             screen = Screen.Explore;
-            Feedback.text = "Начни с Саши. Стол — учёба, доска — работа, кровать — отдых. J — журнал.";
+            Feedback.text = "Начни с Саши. Стол — учёба, доска — работа, кровать — отдых и сон. J — журнал.";
             RefreshStatus();
         }
 
@@ -121,14 +120,15 @@ namespace MezhduParami
             string consequence = Promise.State == PromiseState.Promised && Promise.IsDecisionTime(Day)
                 ? "\n\nЭто последний период срока обещания. Другое занятие нарушит его: доверие Саши -1."
                 : "";
-            ShowActivity(Screen.Activity, pendingActivity, canPerform, failure, consequence);
+            ShowActivity(pendingActivity.Id == "rest" ? Screen.Bed : Screen.Activity,
+                pendingActivity, canPerform, failure, consequence);
         }
 
         public void OnPrimary()
         {
             if (lastInputFrame == Time.frameCount || !PrimaryButton.interactable) return;
             lastInputFrame = Time.frameCount;
-            if (screen == Screen.Activity)
+            if (screen == Screen.Activity || screen == Screen.Bed)
             {
                 var activity = pendingActivity;
                 pendingActivity = null;
@@ -148,7 +148,7 @@ namespace MezhduParami
             {
                 CompleteAction(Promise.TryTakeShift(Day, out var reason), reason, $"Разовая смена выполнена. Деньги +{QuestDefinition.SpecialShift.MoneyDelta}.");
             }
-            else if (screen == Screen.Night) FinishNight(true);
+            else if (screen == Screen.Night) FinishNight();
             else if (screen == Screen.Summary)
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             else if (screen == Screen.Pause || screen == Screen.Conversation || screen == Screen.Journal) CloseDialog();
@@ -158,8 +158,7 @@ namespace MezhduParami
         {
             if (lastInputFrame == Time.frameCount) return;
             lastInputFrame = Time.frameCount;
-            if (screen == Screen.Night) FinishNight(false);
-            else if (screen == Screen.QuestOffer)
+            if (screen == Screen.QuestOffer)
             {
                 Promise.TryDecline(Day);
                 CloseDialog();
@@ -169,6 +168,13 @@ namespace MezhduParami
             else CloseDialog();
         }
 
+        public void OnSleepOption()
+        {
+            if ((screen != Screen.Night && screen != Screen.Bed) || lastInputFrame == Time.frameCount) return;
+            lastInputFrame = Time.frameCount;
+            FinishNight(skipSleep: screen == Screen.Night);
+        }
+
         private void CompleteAction(bool succeeded, string reason, string message)
         {
             CloseDialog();
@@ -176,28 +182,36 @@ namespace MezhduParami
             Promise.ResolveDeadline(Day);
             Feedback.text = message;
             RefreshStatus();
-            if (Day.IsFinished)
-                ShowDialog(Screen.Summary, "Первые дни позади",
-                    $"Три дня в общаге завершены.\nДеньги: {Day.Money}  •  Энергия: {Day.Energy}  •  Здоровье: {Day.Health}\nИнтеллект: {Day.IntelligenceLevel}  •  Готовность: {Day.Readiness}/6\n\n{Promise.Journal(Day)}\n\nЭто итог прототипа. История первого курса ещё в разработке.",
-                    "Начать заново", false);
+            if (Day.IsFinished) ShowSummary();
             else if (Day.IsComplete) OpenNight();
         }
+
+        private void ShowSummary() => ShowDialog(Screen.Summary, "Первые дни позади",
+            $"Три дня в общаге завершены.\nДеньги {Day.Money}  •  Энергия {Day.Energy}/100\nИнтеллект: {Day.IntelligenceLevel}  •  Готовность: {Day.Readiness}/6\n\n{Promise.Journal(Day)}\n\nЭто итог прототипа. История первого курса ещё в разработке.",
+            "Начать заново", false);
 
         private void OpenNight()
         {
             ShowDialog(Screen.Night, $"День {Day.DayNumber} завершён",
-                $"Все три периода использованы.\n\nОбычная еда и сон: деньги -8, энергия +{(Day.Health < 40 ? 35 : 50)}, здоровье без изменений.\nБез еды: бесплатно, здоровье -8, энергия +30.\nЭнергия не превысит 100.\n\nУтром можно снова взять одну оплачиваемую смену.",
-                "Еда и сон: 8", true, "Без еды: здоровье -8");
-            PrimaryButton.interactable = Day.Money >= PrototypeDay.NormalFoodPrice;
-            if (!PrimaryButton.interactable) DialogBody.text += "\nНа обычную еду не хватает денег.";
+                "После сна начнётся новый день с полной энергией и двумя отдыхами.\n\nЕсли пропустить сон, останется текущая энергия, а недосып займёт часть шкалы до следующего сна.",
+                "Спать до утра", false);
         }
 
-        private void FinishNight(bool buyFood)
+        private void FinishNight(bool skipSleep = false)
         {
-            if (!Day.TryStartNextDay(buyFood, out var reason)) { Feedback.text = reason; return; }
+            bool advanced = skipSleep ? Day.TrySkipSleep(out var reason) : Day.TrySleep(out reason);
+            if (!advanced) { Feedback.text = reason; return; }
+            pendingActivity = null;
+            Promise.ResolveDeadline(Day);
+            if (Day.IsFinished)
+            {
+                RefreshStatus();
+                ShowSummary();
+                return;
+            }
             DialogPanel.SetActive(false);
             screen = Screen.Explore;
-            Feedback.text = $"День {Day.DayNumber}. " + (buyFood ? "Еда оплачена, силы восстановлены." : "Без еды здоровье снизилось на 8.")
+            Feedback.text = $"День {Day.DayNumber}. " + (skipSleep ? $"Недосып. Предел восстановления {Day.RecoveryLimit}." : "Энергия 100/100. Отдыхи обновлены.")
                 + (Day.DayNumber == QuestDefinition.DueDay ? " Сегодня вечером: помощь Саше или разовая смена +80." : " J — журнал и сроки.");
             RefreshStatus();
         }
@@ -236,15 +250,17 @@ namespace MezhduParami
         private void ShowActivity(Screen next, ActivityDefinition activity, bool available, string reason, string consequence)
         {
             ShowDialog(next, activity.Title, activity.Description + "\n\n" + Effects(activity) + consequence
-                + (available ? "" : "\n\n" + reason), "Подтвердить", true);
+                + (available ? "" : "\n\n" + reason), next == Screen.Bed ? "Отдохнуть" : "Подтвердить", true);
             PrimaryButton.interactable = available;
         }
 
-        private static string Effects(ActivityDefinition activity)
+        private string Effects(ActivityDefinition activity)
         {
             string text = $"1 период  •  Энергия {Signed(activity.EnergyDelta)}  •  Деньги {Signed(activity.MoneyDelta)}";
             if (activity.IntelligenceExperience > 0) text += $"\nОпыт интеллекта +{activity.IntelligenceExperience}";
             if (activity.ReadinessDelta != 0) text += $"\nГотовность к учёбе {Signed(activity.ReadinessDelta)} (до 6)";
+            if (activity.Id == "rest")
+                text += $"\nОсталось отдыхов {Day.RestsRemaining}/2. Серый участок шкалы — усталость.\n\nСон восстановит всю энергию. Оставшиеся периоды дня будут пропущены.";
             return text;
         }
 
@@ -270,6 +286,11 @@ namespace MezhduParami
             PrimaryButton.interactable = true;
             CancelButton.GetComponentInChildren<TMP_Text>().text = secondary;
             CancelButton.gameObject.SetActive(cancel);
+            if (SleepOption != null)
+            {
+                SleepOption.gameObject.SetActive(next == Screen.Bed || next == Screen.Night);
+                SleepOption.GetComponentInChildren<TMP_Text>().text = next == Screen.Night ? "Пропустить сон" : "Спать до утра";
+            }
             DialogPanel.SetActive(true);
             Prompt.text = "";
             SyncPresentation();
@@ -281,10 +302,8 @@ namespace MezhduParami
             Status.text = Day.IsFinished ? "Итог первых дней" : Day.IsComplete ? "Ночь • отдых" : "Первый курс • " + Day.PeriodLabel;
             if (MoneyValue != null) MoneyValue.text = Day.Money.ToString();
             if (EnergyValue != null) EnergyValue.text = $"{Day.Energy}/100";
-            if (HealthValue != null) HealthValue.text = $"{Day.Health}/100";
             if (StudyValue != null) StudyValue.text = $"{Day.Readiness}/6";
-            if (EnergyFill != null) EnergyFill.fillAmount = Day.Energy / 100f;
-            if (HealthFill != null) HealthFill.fillAmount = Day.Health / 100f;
+            if (EnergyBar != null) EnergyBar.Draw(Day.Energy, Day.Fatigue);
             switch (Promise.State)
             {
                 case PromiseState.Promised:

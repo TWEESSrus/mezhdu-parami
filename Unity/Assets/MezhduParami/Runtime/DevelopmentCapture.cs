@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace MezhduParami
 {
@@ -34,7 +35,15 @@ namespace MezhduParami
         private IEnumerator Start()
         {
             yield return new WaitUntil(() => UnityEngine.Rendering.SplashScreen.isFinished);
+            if (FindFirstObjectByType<MechanicsSandboxUI>() != null && scenario.StartsWith("campus-"))
+            {
+                DontDestroyOnLoad(gameObject);
+                yield return SceneManager.LoadSceneAsync("PrototypeDorm");
+                yield return null;
+            }
             yield return PrepareScenario();
+            Component uiRoot = FindFirstObjectByType<PrototypeUI>();
+            if (uiRoot == null) uiRoot = FindFirstObjectByType<MechanicsSandboxUI>();
             // Native captures keep the actual viewport and Overlay pipeline.
             // The offscreen fallback below is useful for typography only and
             // must not be used as evidence that window compositing is correct.
@@ -45,7 +54,7 @@ namespace MezhduParami
                 var native = ScreenCapture.CaptureScreenshotAsTexture();
                 System.IO.File.WriteAllBytes(destination, native.EncodeToPNG());
                 Destroy(native);
-                Debug.Log("Native capture: viewport=" + Camera.main.rect + ", UI=" + FindFirstObjectByType<PrototypeUI>().GetComponent<Canvas>().renderMode);
+                Debug.Log("Native capture: viewport=" + Camera.main.rect + ", UI=" + uiRoot.GetComponent<Canvas>().renderMode);
                 Application.Quit();
                 yield break;
             }
@@ -67,7 +76,7 @@ namespace MezhduParami
             }
             yield return null;
             Canvas.ForceUpdateCanvases();
-            foreach (var text in FindFirstObjectByType<PrototypeUI>().GetComponentsInChildren<TMPro.TMP_Text>())
+            foreach (var text in uiRoot.GetComponentsInChildren<TMPro.TMP_Text>())
             {
                 text.ForceMeshUpdate();
                 if (text.isTextOverflowing) Debug.LogError("QA text overflow: " + text.name);
@@ -91,6 +100,223 @@ namespace MezhduParami
 
         private IEnumerator PrepareScenario()
         {
+            var sandbox = FindFirstObjectByType<MechanicsSandboxUI>();
+            if (sandbox != null)
+            {
+                if (scenario == "character") sandbox.OpenSkills();
+                else if (scenario == "character-tasks")
+                {
+                    sandbox.OpenSkills();
+                    if (!sandbox.Tasks.Visible) sandbox.Tasks.Toggle();
+                }
+                else if (scenario == "character-interaction")
+                {
+                    sandbox.OpenSkills(); sandbox.OpenStation(SandboxStationKind.Study);
+                    yield return null;
+                    sandbox.Choices[0].onClick.Invoke();
+                }
+                else if (scenario == "character-cap")
+                {
+                    for (int i = 0; i < 3; i++) sandbox.State.Train(out _);
+                    sandbox.Refresh(); sandbox.OpenSkills();
+                }
+                else if (scenario == "character-boost")
+                {
+                    sandbox.State.Study(out _); sandbox.State.Study(out _);
+                    sandbox.State.BuyEnergyDrink(out _); sandbox.State.DrinkEnergyDrink(out _);
+                    sandbox.Refresh(); sandbox.OpenSkills();
+                }
+                else if (scenario == "tasks-visible")
+                {
+                    if (!sandbox.Tasks.Visible) sandbox.Tasks.Toggle();
+                }
+                else if (scenario == "progress-notes")
+                {
+                    sandbox.OpenStation(SandboxStationKind.Study);
+                    yield return null;
+                    sandbox.Choices[0].onClick.Invoke();
+                }
+                else if (scenario == "progress-cap" || scenario == "progress-report" || scenario == "progress-level")
+                {
+                    for (int i = 0; i < 3; i++) sandbox.State.Train(out _);
+                    sandbox.State.Rest(out _);
+                    if (scenario == "progress-cap")
+                    {
+                        sandbox.Refresh();
+                        sandbox.OpenStation(SandboxStationKind.Training);
+                    }
+                    else
+                    {
+                        sandbox.State.BeginWork(SandboxJob.Sorting, 12, out _);
+                        var sorting = sandbox.State.ActiveOrder;
+                        for (int i = 0; i < 3; i++) sandbox.State.Sort(sorting.Id, sorting.Target(i), out _);
+                        sandbox.State.BeginWork(SandboxJob.Warehouse, 12, out _);
+                        var warehouse = sandbox.State.ActiveOrder;
+                        sandbox.State.LoadCrate(warehouse.Id, 0, out _);
+                        int second = 1;
+                        while (warehouse.Target(0) + warehouse.Target(second) != warehouse.WarehouseLoad) second++;
+                        sandbox.State.LoadCrate(warehouse.Id, second, out _);
+                        sandbox.Refresh();
+                        sandbox.OpenStation(SandboxStationKind.PracticeReport);
+                        if (scenario == "progress-level")
+                        {
+                            yield return null;
+                            sandbox.Choices[0].onClick.Invoke();
+                            yield return null;
+                            sandbox.OpenSkills();
+                        }
+                    }
+                }
+                else if (scenario == "visitor-locked") sandbox.OpenStation(SandboxStationKind.VisitorDesk);
+                else if (scenario == "communication-guide")
+                {
+                    sandbox.OpenStation(SandboxStationKind.Shop);
+                    yield return null;
+                    sandbox.Choices[4].onClick.Invoke();
+                    yield return null;
+                    sandbox.OpenInventory();
+                }
+                else if (scenario == "rehearsal") sandbox.OpenStation(SandboxStationKind.Rehearsal);
+                else if (scenario == "visitor-order" || scenario == "visitor-paid")
+                {
+                    for (int i = 0; i < 3; i++) sandbox.State.Rehearse(out _);
+                    sandbox.Refresh();
+                    sandbox.OpenStation(SandboxStationKind.VisitorDesk);
+                    yield return null;
+                    sandbox.Choices[0].onClick.Invoke();
+                    if (scenario == "visitor-paid")
+                    {
+                        var shift = sandbox.State.ActiveOrder;
+                        for (int i = 0; i < 2; i++)
+                        {
+                            yield return null;
+                            sandbox.Choices[shift.Target(i)].onClick.Invoke();
+                        }
+                    }
+                }
+                else if (scenario == "warehouse-locked") sandbox.OpenStation(SandboxStationKind.Warehouse);
+                else if (scenario == "training-course")
+                {
+                    sandbox.OpenStation(SandboxStationKind.Shop);
+                    yield return null;
+                    sandbox.Choices[3].onClick.Invoke();
+                    yield return null;
+                    sandbox.OpenInventory();
+                }
+                else if (scenario == "training" || scenario == "warehouse-order" || scenario == "warehouse-paid")
+                {
+                    sandbox.State.BuyTrainingCourse(out _);
+                    if (scenario == "training")
+                    {
+                        sandbox.Refresh();
+                        sandbox.OpenStation(SandboxStationKind.Training);
+                    }
+                    else
+                    {
+                        sandbox.State.Train(out _);
+                        sandbox.State.Train(out _);
+                        sandbox.Refresh();
+                        sandbox.OpenStation(SandboxStationKind.Warehouse);
+                        yield return null;
+                        sandbox.Choices[0].onClick.Invoke();
+                        yield return null;
+                        var shift = sandbox.State.ActiveOrder;
+                        sandbox.Choices[0].onClick.Invoke();
+                        if (scenario == "warehouse-paid")
+                        {
+                            int second = 1;
+                            while (shift.Target(0) + shift.Target(second) != shift.WarehouseLoad) second++;
+                            yield return null;
+                            sandbox.Choices[second].onClick.Invoke();
+                        }
+                    }
+                }
+                else if (scenario == "shop") sandbox.OpenStation(SandboxStationKind.Shop);
+                else if (scenario == "purchase")
+                {
+                    sandbox.OpenStation(SandboxStationKind.Shop);
+                    yield return null;
+                    sandbox.Choices[0].onClick.Invoke();
+                }
+                else if (scenario == "inventory-empty") sandbox.OpenInventory();
+                else if (scenario == "drink-blocked")
+                {
+                    for (int i = 0; i < 4; i++) sandbox.State.Study(out _);
+                    sandbox.State.BuyEnergyDrink(out _);
+                    sandbox.Refresh();
+                    sandbox.OpenInventory();
+                }
+                else if (scenario == "inventory" || scenario == "inventory-snack" || scenario == "inventory-after-use")
+                {
+                    sandbox.State.BuyBook(out _);
+                    sandbox.State.BuySnack(out _);
+                    sandbox.State.BuySnack(out _);
+                    sandbox.Refresh();
+                    sandbox.OpenInventory();
+                    if (scenario != "inventory") sandbox.InventoryView.SnackSlot.onClick.Invoke();
+                    if (scenario == "inventory-after-use") sandbox.InventoryView.UseButton.onClick.Invoke();
+                }
+                else if (scenario == "fatigue" || scenario == "rested")
+                {
+                    for (int i = 0; i < 6; i++)
+                    {
+                        if (i == 3) sandbox.State.Rest(out _);
+                        sandbox.State.Study(out _);
+                    }
+                    sandbox.State.Rest(out _);
+                    for (int i = 0; i < 2; i++)
+                    {
+                        sandbox.State.BuySnack(out _);
+                        sandbox.State.EatSnack(out _);
+                    }
+                    sandbox.Refresh();
+                    if (scenario == "rested")
+                    {
+                        sandbox.OpenStation(SandboxStationKind.Rest);
+                        yield return null;
+                        sandbox.Choices[1].onClick.Invoke();
+                    }
+                }
+                else if (scenario == "drink-item" || scenario == "drink-active" || scenario == "drink-spent" || scenario == "drink-expired")
+                {
+                    for (int i = 0; i < 3; i++) sandbox.State.Study(out _);
+                    for (int i = 0; i < 2; i++)
+                    {
+                        sandbox.State.BuySnack(out _);
+                        sandbox.State.EatSnack(out _);
+                    }
+                    sandbox.State.BuyEnergyDrink(out _);
+                    if (scenario == "drink-item")
+                        sandbox.OpenInventory();
+                    else
+                    {
+                        sandbox.State.DrinkEnergyDrink(out _);
+                        sandbox.State.TickEnergy(scenario == "drink-expired" ? sandbox.State.BonusEnergy - 1 : 3f);
+                        if (scenario == "drink-spent") sandbox.State.Study(out _);
+                    }
+                    sandbox.Refresh();
+                    if (scenario == "drink-expired") yield return new WaitForSecondsRealtime(1.15f);
+                }
+                else if (scenario == "sorting" || scenario == "copy")
+                {
+                    if (scenario == "copy") { sandbox.State.BuyBook(out _); sandbox.State.ReadBook(out _); sandbox.Refresh(); }
+                    sandbox.OpenStation(scenario == "copy" ? SandboxStationKind.CopyCenter : SandboxStationKind.Sorting);
+                    yield return null; sandbox.Choices[0].onClick.Invoke();
+                }
+                else if (scenario == "tasks-hidden") { if (sandbox.Tasks.Visible) sandbox.Tasks.Toggle(); }
+                else if (scenario == "completed")
+                {
+                    sandbox.State.BuyBook(out _); sandbox.State.ReadBook(out _);
+                    sandbox.State.BuySnack(out _); sandbox.State.EatSnack(out _);
+                    sandbox.State.BeginWork(SandboxJob.Sorting, 7, out _); var sort = sandbox.State.ActiveOrder;
+                    for (int i = 0; i < 3; i++) sandbox.State.Sort(sort.Id, sort.Target(i), out _);
+                    sandbox.State.BeginWork(SandboxJob.CopyCenter, 8, out _); var copy = sandbox.State.ActiveOrder;
+                    sandbox.State.Copy(copy.Id, copy.Target(0), copy.Target(1), copy.Target(2), out _);
+                    sandbox.Refresh();
+                }
+                yield return null;
+                yield break;
+            }
             if (scenario == "selection") yield break;
             var ui = FindFirstObjectByType<PrototypeUI>();
             ui.SelectStudent(true);
@@ -117,11 +343,26 @@ namespace MezhduParami
                 ui.OpenInteraction(GameObject.Find("Sasha").GetComponent<WorldInteraction>());
                 yield break;
             }
+            if (scenario == "campus-bed" || scenario == "campus-morning")
+            {
+                yield return Confirm(ui, "Bed");
+                yield return Confirm(ui, "Bed");
+                ui.OpenInteraction(GameObject.Find("Bed").GetComponent<WorldInteraction>());
+                if (scenario == "campus-morning") ui.SleepOption.onClick.Invoke();
+                yield break;
+            }
             yield return Confirm(ui, "Sasha");
             if (scenario == "journal") { ui.OpenJournal(); yield break; }
+            if (scenario == "campus-night" || scenario == "campus-sleepless")
+            {
+                yield return Confirm(ui, "StudyDesk");
+                yield return Confirm(ui, "StudyDesk");
+                if (scenario == "campus-sleepless") ui.SleepOption.onClick.Invoke();
+                yield break;
+            }
             while (ui.Day.DayNumber < 3)
             {
-                while (!ui.Day.IsComplete) yield return Confirm(ui, "Bed");
+                while (!ui.Day.IsComplete) yield return Confirm(ui, ui.Day.RestsRemaining > 0 ? "Bed" : "StudyDesk");
                 if (scenario == "night") yield break;
                 ui.PrimaryButton.onClick.Invoke();
                 yield return null;
