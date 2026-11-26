@@ -139,12 +139,12 @@ TextureImporter:
       name: walk_front_0
       rect:
         serializedVersion: 2
-        x: 7
-        y: 3
-        width: 139
-        height: 210
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 8
+        y: 4
+        width: 137
+        height: 208
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -161,12 +161,12 @@ TextureImporter:
       name: walk_front_1
       rect:
         serializedVersion: 2
-        x: 164
-        y: 3
-        width: 139
-        height: 214
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 165
+        y: 4
+        width: 137
+        height: 212
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -183,12 +183,12 @@ TextureImporter:
       name: walk_front_2
       rect:
         serializedVersion: 2
-        x: 321
-        y: 3
-        width: 139
-        height: 218
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 322
+        y: 4
+        width: 137
+        height: 216
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -205,12 +205,12 @@ TextureImporter:
       name: walk_front_3
       rect:
         serializedVersion: 2
-        x: 478
-        y: 3
-        width: 139
-        height: 214
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 479
+        y: 4
+        width: 137
+        height: 212
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -227,12 +227,12 @@ TextureImporter:
       name: walk_front_4
       rect:
         serializedVersion: 2
-        x: 635
-        y: 3
-        width: 139
-        height: 210
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 636
+        y: 4
+        width: 137
+        height: 208
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -249,12 +249,12 @@ TextureImporter:
       name: walk_front_5
       rect:
         serializedVersion: 2
-        x: 792
-        y: 3
-        width: 139
-        height: 214
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 793
+        y: 4
+        width: 137
+        height: 212
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -271,12 +271,12 @@ TextureImporter:
       name: walk_front_6
       rect:
         serializedVersion: 2
-        x: 949
-        y: 3
-        width: 139
-        height: 218
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 950
+        y: 4
+        width: 137
+        height: 216
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -293,12 +293,12 @@ TextureImporter:
       name: walk_front_7
       rect:
         serializedVersion: 2
-        x: 1106
-        y: 3
-        width: 139
-        height: 214
-      alignment: 0
-      pivot: {x: 0, y: 0}
+        x: 1107
+        y: 4
+        width: 137
+        height: 212
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -315,7 +315,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 1173184084a3ab54584b6804c49cc626
     internalID: 0
     vertices: []
     indices: 
@@ -323,7 +323,9 @@ TextureImporter:
     weights: []
     secondaryTextures: []
     spriteCustomMetadata:
-      entries: []
+      entries:
+      - key: SpriteEditor.SliceSettings
+        value: '{"sliceOnImport":false,"gridCellCount":{"x":1.0,"y":1.0},"gridSpriteSize":{"x":64.0,"y":64.0},"gridSpriteOffset":{"x":0.0,"y":0.0},"gridSpritePadding":{"x":0.0,"y":0.0},"pivot":{"x":0.5,"y":0.0},"pivotPixels":{"x":0.0,"y":0.0},"autoSlicingMethod":0,"spriteAlignment":7,"pivotUnitMode":0,"slicingType":0,"keepEmptyRects":false,"isAlternate":false}'
     nameFileIdTable:
       walk_front_0: 8515642957288914643
       walk_front_1: -9024853835906218830
